@@ -209,7 +209,7 @@ make build
 
 ### CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the following on every push and pull request.
+GitHub Actions (`.github/workflows/ci.yml`) runs the following on every push and pull request, and weekly.
 
 | Job | What it does |
 |---|---|
@@ -218,7 +218,13 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the following on every push and
 | vulncheck | govulncheck checks dependencies and the standard library for known vulnerabilities |
 | release-check | GoReleaser builds all targets to verify the release config (nothing is published) |
 
-Dependabot opens weekly pull requests to update Go modules and GitHub Actions.
+### Maintenance
+
+- Dependabot opens up to two grouped pull requests a week: Go modules and GitHub Actions (pinned by SHA). Security updates are opened as soon as an advisory is published.
+- Not covered by Dependabot, so update by hand:
+  - Go: when a new Go version is released (every February and August), raise the `go` directive in `go.mod` and the minimum version in the CI matrix to the oldest supported Go.
+  - The golangci-lint and GoReleaser versions in `.github/workflows/`.
+- Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
 ### Release
 

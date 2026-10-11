@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Weekly, to catch new vulnerabilities and breakage with the latest Go without code changes
+  schedule:
+    - cron: '0 0 * * 1'
 
 permissions:
   contents: read
