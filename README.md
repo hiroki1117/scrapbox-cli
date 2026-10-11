@@ -20,6 +20,7 @@
 | From source | `git clone`, then `make build` (creates `bin/sb`) |
 
 Binaries are available for Linux, macOS and Windows on amd64 and arm64. Run `sb version` to check the version.
+To verify that an archive was built by this repository's release workflow, run `gh attestation verify <archive> -R hiroki1117/scrapbox-cli`.
 
 ## Quick start
 
@@ -221,7 +222,8 @@ Dependabot opens weekly pull requests to update Go modules and GitHub Actions.
 
 ### Release
 
-Pushing a tag starting with `v` runs `.github/workflows/release.yml`, which uses GoReleaser (`.goreleaser.yaml`) to build binaries and checksums for each OS and publish them to GitHub Releases.
+Pushing a tag starting with `v` runs `.github/workflows/release.yml`, which uses GoReleaser (`.goreleaser.yaml`) to build binaries and checksums for each OS, attest their build provenance, and publish them to GitHub Releases.
+Only users with write access to this repository can push tags. All actions are pinned by commit SHA.
 
 ```bash
 git tag v0.1.0
