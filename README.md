@@ -10,7 +10,7 @@ go install github.com/hiroki1117/scrapbox-cli/cmd/sb@latest
 make build   # bin/sb を生成
 ```
 
-Go 1.23 以上が必要である。
+Go 1.26 以上が必要である。
 
 ## 設定
 
@@ -182,7 +182,7 @@ GitHub Actions（`.github/workflows/ci.yml`）で push と Pull Request ごと�
 | ジョブ | 内容 |
 |---|---|
 | lint | `gofmt` の差分・`go mod tidy` の差分・`go vet`・golangci-lint |
-| test | ubuntu / macos / windows × Go 1.23（最小）・stable で `go test -race` |
+| test | ubuntu / macos / windows × Go 1.26（最小）・stable で `go test -race` |
 | vulncheck | govulncheck で依存モジュールと標準ライブラリの既知の脆弱性を検査 |
 
 依存モジュールと GitHub Actions の更新は Dependabot が週次で Pull Request を作る。
