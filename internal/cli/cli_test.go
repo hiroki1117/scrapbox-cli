@@ -205,3 +205,45 @@ func TestConfigSetProject(t *testing.T) {
 		t.Error("expected error for unknown key")
 	}
 }
+
+func TestSearchCommands(t *testing.T) {
+	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.EscapedPath() {
+		case "/api/pages/p/search/query":
+			if r.URL.Query().Get("q") != "go cli" || r.URL.Query().Get("op") != "or" {
+				t.Errorf("text query = %s", r.URL.RawQuery)
+			}
+			fmt.Fprint(w, `{"count":1,"pages":[{"title":"Go","lines":["Go","  go cli tool"]}]}`)
+		case "/api/pages/p/search/vector/titles":
+			fmt.Fprint(w, `{"pages":[{"title":"A","score":0.9,"linked":1,"exists":true},{"title":"B","score":0.5,"exists":false}]}`)
+		case "/api/pages/v2/p/Start/links2hop":
+			if r.URL.Query().Get("search") != "api token" {
+				t.Errorf("related query = %s", r.URL.RawQuery)
+			}
+			fmt.Fprint(w, `{"links2hop":[{"title":"R","linked":2}],"pagination":{"total":1}}`)
+		default:
+			t.Errorf("unexpected path %s", r.URL.EscapedPath())
+		}
+	})
+	env := map[string]string{config.EnvProject: "p"}
+
+	tests := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"search", "text", "go", "cli", "--or"}, "Go\n    go cli tool\n"},
+		{[]string{"search", "vector", "x", "--limit", "1"}, "SCORE  LINKED  TITLE\n0.900  1       A\n"},
+		{[]string{"search", "related", "Start", "api", "token", "--hops", "2"}, "R\n"},
+	}
+	for _, tt := range tests {
+		t.Run(strings.Join(tt.args[:2], " "), func(t *testing.T) {
+			got, err := runCmd(t, api, env, tt.args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(got, tt.want) {
+				t.Errorf("output = %q, want containing %q", got, tt.want)
+			}
+		})
+	}
+}

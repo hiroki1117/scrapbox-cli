@@ -291,3 +291,51 @@ func TestParseRetryAfter(t *testing.T) {
 		t.Error("invalid value must be rejected")
 	}
 }
+
+func TestPagesSearchVector(t *testing.T) {
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pages/proj/search/vector/titles" || r.URL.Query().Get("q") != "AI 連携" {
+			t.Errorf("unexpected request: %s", r.URL)
+		}
+		fmt.Fprint(w, `{"pages":[{"id":"1","title":"a","score":0.9,"exists":true},{"title":"b","score":0.8,"linked":2,"exists":false}]}`)
+	}))
+	res, err := c.Pages.SearchVector(context.Background(), "proj", "AI 連携")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Pages) != 2 || res.Pages[0].Score != 0.9 || res.Pages[1].Exists {
+		t.Errorf("unexpected result: %+v", res.Pages)
+	}
+}
+
+func TestPagesRelated(t *testing.T) {
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.EscapedPath() {
+		case "/api/pages/v2/proj/a_b/links1hop":
+			if r.URL.Query().Get("search") != "go" || r.URL.Query().Get("op") != "or" {
+				t.Errorf("unexpected query: %s", r.URL.RawQuery)
+			}
+			fmt.Fprint(w, `{"links1hop":[{"title":"x"}],"pagination":{"perPage":1000,"total":1}}`)
+		case "/api/pages/v2/proj/a_b/links2hop":
+			fmt.Fprint(w, `{"links2hop":[{"title":"y"},{"title":"z"}],"pagination":{"total":2}}`)
+		default:
+			t.Errorf("unexpected path: %s", r.URL.EscapedPath())
+		}
+	}))
+	ctx := context.Background()
+
+	one, err := c.Pages.Related(ctx, "proj", "a b", OneHop, &RelatedOptions{Search: "go", Or: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(one.Pages) != 1 || one.Pages[0].Title != "x" || one.Pagination.Total != 1 {
+		t.Errorf("1hop = %+v", one)
+	}
+	two, err := c.Pages.Related(ctx, "proj", "a b", TwoHop, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(two.Pages) != 2 {
+		t.Errorf("2hop = %+v", two)
+	}
+}

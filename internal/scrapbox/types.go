@@ -156,3 +156,40 @@ type User struct {
 	Created     Timestamp `json:"created,omitempty"`
 	Updated     Timestamp `json:"updated,omitempty"`
 }
+
+// VectorSearchResult はベクトル検索のレスポンスである。
+type VectorSearchResult struct {
+	Pages []VectorHit `json:"pages"`
+}
+
+// VectorHit はベクトル検索でヒットしたページである。
+// Exists が false の空ページ (リンクだけが存在するページ) は ID や更新日時を持たない。
+type VectorHit struct {
+	ID         string    `json:"id,omitempty"`
+	Title      string    `json:"title"`
+	Image      string    `json:"image,omitempty"`
+	Score      float64   `json:"score"`
+	Linked     int       `json:"linked"`
+	Exists     bool      `json:"exists"`
+	Views      int       `json:"views,omitempty"`
+	PageRank   float64   `json:"pageRank,omitempty"`
+	LinesCount int       `json:"linesCount,omitempty"`
+	CharsCount int       `json:"charsCount,omitempty"`
+	Created    Timestamp `json:"created,omitempty"`
+	Updated    Timestamp `json:"updated,omitempty"`
+}
+
+// RelatedResult は関連ページリストの取得結果である。
+type RelatedResult struct {
+	Hops       Hops          `json:"hops"`
+	Pages      []RelatedPage `json:"pages"`
+	Pagination Pagination    `json:"pagination"`
+}
+
+// Pagination は関連ページリストのページング情報である。
+type Pagination struct {
+	PerPage int    `json:"perPage"`
+	Total   int    `json:"total"`
+	HasNext bool   `json:"hasNext"`
+	NextID  string `json:"nextId,omitempty"`
+}

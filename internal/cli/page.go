@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -182,30 +181,22 @@ func newPageRelatedCmd(app *App) *cobra.Command {
 	var hops int
 	cmd := &cobra.Command{
 		Use:   "related <title|url>",
-		Short: "Print related pages (1-hop / 2-hop links)",
-		Long:  "Print pages in the related page list of a page.\n\n" + pageArgHelp,
-		Args:  cobra.ExactArgs(1),
+		Short: "List related pages (1-hop or 2-hop links)",
+		Long: `List pages in the related page list of a page.
+
+1-hop: pages linking to or linked from the page.
+2-hop: pages sharing a link with the 1-hop pages (1-hop pages are not included).
+To filter related pages by keywords, use 'sb search related'.
+
+` + pageArgHelp + `
+
+Text output: UPDATED, LINKED (backlink count), TITLE.
+JSON output: {hops, pages: [{title, descriptions, linksLc, ...}], pagination}`,
+		Example: `  sb page related "Smart Context"
+  sb page related "Smart Context" --hops 2 -o json | jq -r '.pages[].title'`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			h := scrapbox.Hops(hops)
-			if err := h.Validate(); err != nil {
-				return err
-			}
-			page, err := fetchPage(cmd, app, args[0])
-			if err != nil {
-				return err
-			}
-			related := page.RelatedPages.Links1Hop
-			if h == scrapbox.TwoHop {
-				related = slices.Concat(related, page.RelatedPages.Links2Hop)
-			}
-			return app.Printer().Print(related, func(w io.Writer) error {
-				tw := output.Table(w)
-				fmt.Fprintln(tw, "UPDATED\tLINKED\tTITLE")
-				for _, p := range related {
-					fmt.Fprintf(tw, "%s\t%d\t%s\n", output.Time(p.Updated.Time()), p.Linked, p.Title)
-				}
-				return tw.Flush()
-			})
+			return runRelated(cmd, app, args[0], hops, nil)
 		},
 	}
 	cmd.Flags().IntVar(&hops, "hops", 1, "range of related pages: 1 or 2")

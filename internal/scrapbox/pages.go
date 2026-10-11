@@ -91,30 +91,6 @@ func (s *PagesService) Get(ctx context.Context, project, title string) (*Page, e
 	return &out, nil
 }
 
-// SearchOptions は全文検索のオプションである。
-type SearchOptions struct {
-	// Limit は返すページ数の上限である。サーバーが limit を無視する場合があるため、クライアント側でも切り詰める。
-	Limit int
-}
-
-// Search はプロジェクト内を全文検索する。
-//
-// GET /api/pages/:project/search/query?q=
-func (s *PagesService) Search(ctx context.Context, project, query string, opts *SearchOptions) (*SearchResult, error) {
-	q := url.Values{"q": {query}}
-	if opts != nil && opts.Limit > 0 {
-		q.Set("limit", strconv.Itoa(opts.Limit))
-	}
-	var out SearchResult
-	if _, err := s.client.getJSON(ctx, "pages/"+escapeSegment(project)+"/search/query", q, &out); err != nil {
-		return nil, err
-	}
-	if opts != nil && opts.Limit > 0 && len(out.Pages) > opts.Limit {
-		out.Pages = out.Pages[:opts.Limit]
-	}
-	return &out, nil
-}
-
 // Titles はプロジェクトの全ページのタイトルとリンクを返す。
 // サーバーは X-Following-Id ヘッダで次のページを示すため、それに従ってページングする。
 //
