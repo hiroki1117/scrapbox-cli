@@ -49,11 +49,8 @@ func newConfigCmd(app *App) *cobra.Command {
 	for _, name := range configKeyNames() {
 		fmt.Fprintf(&keysHelp, "\n  %-10s %s", name, configKeys[name].help)
 	}
-	cmd := &cobra.Command{
-		Use:   "config",
-		Short: "Manage the config file",
-		Long:  "Manage the config file. Environment variables and flags take precedence over the config file.\n\nKeys:" + keysHelp.String(),
-	}
+	cmd := newGroupCmd("config", "Manage the config file (default project, etc.)",
+		"Manage settings saved in the config file.\nFlags and environment variables take precedence over the config file.\nCredentials are managed by 'sb auth'.\n\nKeys:"+keysHelp.String())
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:     "get <key>",

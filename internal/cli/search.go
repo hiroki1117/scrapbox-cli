@@ -12,15 +12,11 @@ import (
 )
 
 func newSearchCmd(app *App) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "search",
-		Short: "Search pages (full-text, vector, related pages)",
-		Long: `Search pages in a project.
+	cmd := newGroupCmd("search", "Search pages (full-text, semantic, within related pages)", `Search pages in a project.
 
-  text     full-text search over page bodies (keyword match)
-  vector   semantic search over page titles and links (finds similar topics)
-  related  full-text search limited to the related pages of a page`,
-	}
+  text     keyword match over page bodies
+  vector   semantic match over page titles and links; finds similar topics
+  related  keyword match limited to the related pages of a page`)
 	cmd.AddCommand(newSearchTextCmd(app), newSearchVectorCmd(app), newSearchRelatedCmd(app))
 	return cmd
 }

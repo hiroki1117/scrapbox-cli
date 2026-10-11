@@ -11,7 +11,10 @@ func newWhoamiCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "whoami",
 		Short: "Print the authenticated user",
-		Args:  cobra.NoArgs,
+		Long: `Print the user of the current credential, or "not logged in (guest)".
+
+JSON output: {id, name, displayName, email, isGuest, ...}`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, err := app.Client()
 			if err != nil {

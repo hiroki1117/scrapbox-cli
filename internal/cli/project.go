@@ -10,10 +10,7 @@ import (
 )
 
 func newProjectCmd(app *App) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "project",
-		Short: "Read projects",
-	}
+	cmd := newGroupCmd("project", "Show project information", "")
 	cmd.AddCommand(newProjectGetCmd(app), newProjectListCmd(app))
 	return cmd
 }
@@ -22,8 +19,13 @@ func newProjectGetCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get [name]",
 		Short: "Print project information",
-		Long:  "Print project information. If name is omitted, the current project is used.",
-		Args:  cobra.MaximumNArgs(1),
+		Long: `Print information about a project. If name is omitted, the current project is used.
+
+Text output: name, display name, visibility, membership and timestamps.
+JSON output: {id, name, displayName, publicVisible, isMember, plan, created, updated, ...}`,
+		Example: `  sb project get
+  sb project get help-jp -o json`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var name string
 			if len(args) == 1 {
@@ -61,7 +63,13 @@ func newProjectListCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List projects you belong to (requires authentication)",
-		Args:  cobra.NoArgs,
+		Long: `List the projects the authenticated user belongs to. Requires authentication (see 'sb auth login').
+
+Text output: NAME, DISPLAY NAME, PUBLIC, UPDATED.
+JSON output: {projects: [{name, displayName, publicVisible, ...}]}`,
+		Example: `  sb project list
+  sb project list -o json | jq -r '.projects[].name'`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, err := app.Client()
 			if err != nil {

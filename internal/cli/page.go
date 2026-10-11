@@ -12,10 +12,7 @@ import (
 )
 
 func newPageCmd(app *App) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "page",
-		Short: "Read pages",
-	}
+	cmd := newGroupCmd("page", "Read pages (content, list, links, related pages, code blocks)", "")
 	cmd.AddCommand(
 		newPageGetCmd(app),
 		newPageListCmd(app),
@@ -28,17 +25,21 @@ func newPageCmd(app *App) *cobra.Command {
 	return cmd
 }
 
-const pageArgHelp = "<title|url> accepts a page title in the current project or a page URL like https://scrapbox.io/<project>/<title>."
-
 func newPageGetCmd(app *App) *cobra.Command {
 	var number bool
 	cmd := &cobra.Command{
 		Use:   "get <title|url>",
 		Short: "Print the content of a page",
-		Long:  "Print the content of a page.\n\n" + pageArgHelp,
-		Example: `  sb page get "Page Title"
+		Long: `Print the content of a page in Scrapbox notation. The first line is the title.
+
+` + pageArgHelp + `
+
+Text output: page lines as-is (with -n, prefixed by line numbers).
+JSON output: {title, lines: [{text, created, updated, ...}], links, descriptions,
+             relatedPages, views, linked, created, updated, ...}`,
+		Example: `  sb page get "Smart Context"
   sb page get https://scrapbox.io/help-jp/Smart_Context
-  sb page get "Page Title" -o json | jq '.lines[].text'`,
+  sb page get "Smart Context" -o json | jq -r '.lines[].text'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			page, err := fetchPage(cmd, app, args[0])
@@ -70,8 +71,14 @@ func newPageListCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List pages in a project",
+		Long: `List pages in a project. Pinned pages come first and are marked "[pin]".
+
+Text output: UPDATED, VIEWS, LINKED (backlink count), TITLE.
+JSON output: {projectName, count, skip, limit, pages: [{title, descriptions,
+             views, linked, pin, created, updated, ...}]}`,
 		Example: `  sb page list --limit 20 --sort views
-  sb page list --all -o json`,
+  sb page list --skip 100 --limit 100
+  sb page list --all -o json | jq -r '.pages[].title'`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			project, err := app.Project()
@@ -83,29 +90,28 @@ func newPageListCmd(app *App) *cobra.Command {
 				return err
 			}
 
-			var pages []scrapbox.PageSummary
-			var result any
+			var list *scrapbox.PageList
 			if all {
+				// JSON の形を --all の有無で変えないよう、PageList に詰め直す。
+				list = &scrapbox.PageList{ProjectName: project, Skip: opts.Skip, Pages: []scrapbox.PageSummary{}}
 				for p, err := range client.Pages.ListAll(cmd.Context(), project, &opts) {
 					if err != nil {
 						return err
 					}
-					pages = append(pages, p)
+					list.Pages = append(list.Pages, p)
 				}
-				result = pages
+				list.Count, list.Limit = opts.Skip+len(list.Pages), len(list.Pages)
 			} else {
-				list, err := client.Pages.List(cmd.Context(), project, &opts)
+				list, err = client.Pages.List(cmd.Context(), project, &opts)
 				if err != nil {
 					return err
 				}
-				pages = list.Pages
-				result = list
 			}
 
-			return app.Printer().Print(result, func(w io.Writer) error {
+			return app.Printer().Print(list, func(w io.Writer) error {
 				tw := output.Table(w)
 				fmt.Fprintln(tw, "UPDATED\tVIEWS\tLINKED\tTITLE")
-				for _, p := range pages {
+				for _, p := range list.Pages {
 					title := p.Title
 					if p.Pinned() {
 						title = "[pin] " + title
@@ -117,10 +123,10 @@ func newPageListCmd(app *App) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.IntVar(&opts.Limit, "limit", 100, fmt.Sprintf("number of pages per request (max %d)", scrapbox.MaxListLimit))
+	f.IntVar(&opts.Limit, "limit", 100, fmt.Sprintf("number of pages to fetch (max %d; with --all, per request)", scrapbox.MaxListLimit))
 	f.IntVar(&opts.Skip, "skip", 0, "number of pages to skip")
-	f.StringVar(&opts.Sort, "sort", "", "sort key: updated|created|accessed|linked|views|title")
-	f.BoolVar(&all, "all", false, "fetch all pages by paging through the results")
+	f.StringVar(&opts.Sort, "sort", "", "sort key: updated|created|accessed|linked|views|title (default: updated)")
+	f.BoolVar(&all, "all", false, "fetch all pages, paging automatically")
 	return cmd
 }
 
@@ -128,8 +134,14 @@ func newPageTitlesCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "titles",
 		Short: "Print all page titles in a project",
-		Long:  "Print all page titles in a project. Lighter than 'page list --all' and suitable for completion or grep.",
-		Args:  cobra.NoArgs,
+		Long: `Print all page titles in a project, including the links of each page.
+Lighter than 'page list --all'; useful for grep, fzf or checking whether a page exists.
+
+Text output: one title per line.
+JSON output: [{id, title, links, updated}]`,
+		Example: `  sb page titles | grep -i golang
+  sb page titles -o json | jq -r '.[] | select(.links | index("Go")) | .title'`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			project, err := app.Project()
 			if err != nil {
@@ -160,8 +172,16 @@ func newPageLinksCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "links <title|url>",
 		Short: "Print links written in a page",
-		Long:  "Print links written in a page, including links to empty pages.\n\n" + pageArgHelp,
-		Args:  cobra.ExactArgs(1),
+		Long: `Print the links ([title] notation) written in a page, including links to empty pages.
+Backlinks are not included; use 'sb page related' for pages linking to this page.
+
+` + pageArgHelp + `
+
+Text output: one link title per line.
+JSON output: ["title", ...]`,
+		Example: `  sb page links "Smart Context"
+  sb page links "Smart Context" | xargs -I{} sb page get {}`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			page, err := fetchPage(cmd, app, args[0])
 			if err != nil {
@@ -205,10 +225,16 @@ JSON output: {hops, pages: [{title, descriptions, linksLc, ...}], pagination}`,
 
 func newPageCodeCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "code <title|url> <filename>",
-		Short:   "Print a code block (code:<filename>) in a page",
-		Example: `  sb page code "Page Title" main.go > main.go`,
-		Args:    cobra.ExactArgs(2),
+		Use:   "code <title|url> <filename>",
+		Short: "Print a code block (code:<filename>) in a page",
+		Long: `Print the content of a code block written as "code:<filename>" in a page.
+
+` + pageArgHelp + `
+
+Output is always the raw code (-o is ignored) so it can be redirected to a file.`,
+		Example: `  sb page code "Page Title" main.go > main.go
+  sb page code "Page Title" script.sh | sh`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return printRaw(cmd, app, args[0], args[1], (*scrapbox.PagesService).Code)
 		},
@@ -217,8 +243,13 @@ func newPageCodeCmd(app *App) *cobra.Command {
 
 func newPageTableCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "table <title|url> <filename>",
-		Short:   "Print a table (table:<filename>) in a page as CSV",
+		Use:   "table <title|url> <filename>",
+		Short: "Print a table (table:<filename>) in a page as CSV",
+		Long: `Print a table written as "table:<filename>" in a page, converted to CSV.
+
+` + pageArgHelp + `
+
+Output is always CSV (-o is ignored) so it can be redirected to a file.`,
 		Example: `  sb page table "Page Title" members > members.csv`,
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

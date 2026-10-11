@@ -16,10 +16,7 @@ import (
 )
 
 func newAuthCmd(app *App) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "auth",
-		Short: "Manage authentication for private projects",
-		Long: `Manage authentication for private projects.
+	cmd := newGroupCmd("auth", "Manage authentication for private projects", `Manage authentication for private projects and Smart Context.
 
 Credentials are saved in the config file (permission 0600).
 Credentials in environment variables take precedence over the config file.
@@ -27,8 +24,9 @@ Credentials in environment variables take precedence over the config file.
 Supported auth types:
   pat              Personal Access Token (recommended). Issue at https://scrapbox.io/settings/personal-access-tokens
   service-account  Service Account access key (Business plan, single project)
-  sid              connect.sid cookie value of a logged-in browser`,
-	}
+  sid              connect.sid cookie value of a logged-in browser
+
+Credentials can also be given by environment variables (see 'sb help environment').`)
 	cmd.AddCommand(newAuthLoginCmd(app), newAuthStatusCmd(app), newAuthLogoutCmd(app))
 	return cmd
 }
@@ -150,7 +148,13 @@ func newAuthStatusCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show the current authentication state",
-		Args:  cobra.NoArgs,
+		Long: `Show which credential is used, where it comes from (env or file), and the logged-in user.
+The credential itself is masked.
+
+JSON output: {configFile, source, type, credential, user}`,
+		Example: `  sb auth status
+  sb auth status -o json`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			typ, secret := app.cfg.Credentials.Active()
 			st := authStatus{
@@ -197,6 +201,7 @@ func newAuthLogoutCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
 		Short: "Remove credentials from the config file",
+		Long:  "Remove credentials from the config file. Credentials in environment variables are not affected.",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			f, err := config.ReadFile(app.cfg.FilePath)

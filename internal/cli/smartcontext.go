@@ -15,12 +15,17 @@ func newContextCmd(app *App) *cobra.Command {
 		Short: "Export a page and its related pages as AI-ready text (Smart Context)",
 		Long: `Export a page and its related pages as a single text formatted for LLMs.
 This is the same as "Export for AI" (Smart Context) in the Scrapbox page menu.
+Requires authentication, even for public projects (see 'sb auth login').
 
-Note that 2-hop export can exceed 1MB in large projects.
+Use this to give an LLM the context around a topic in one request.
+2-hop export can exceed 1MB in large projects; start with --hops 1.
 
-` + pageArgHelp,
-		Example: `  sb context "Page Title" | pbcopy
-  sb context "Page Title" --hops 2 > context.txt`,
+` + pageArgHelp + `
+
+Text output: the exported text as-is.
+JSON output: {project, title, hops, text}`,
+		Example: `  sb context "Smart Context" | pbcopy
+  sb context "Smart Context" --hops 2 > context.txt`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			h := scrapbox.Hops(hops)

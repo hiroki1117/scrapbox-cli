@@ -24,21 +24,9 @@ func NewRootCmd(app *App) *cobra.Command {
 	var gf globalFlags
 
 	cmd := &cobra.Command{
-		Use:   "sb",
-		Short: "Command line client for Scrapbox (Cosense)",
-		Long: `sb is a command line client for Scrapbox (Cosense).
-
-Environment variables:
-  ` + config.EnvProject + `         default project name (or 'sb config set project <name>')
-  ` + config.EnvPersonalToken + `                  Personal Access Token (recommended for private projects)
-  ` + config.EnvServiceAccountKey + `  Service Account access key (Business plan)
-  ` + config.EnvSessionID + `                  connect.sid cookie value
-  ` + config.EnvBaseURL + `             API base URL (default: https://scrapbox.io/api)
-  ` + config.EnvTimeout + `             request timeout (e.g. 30s)
-  ` + config.EnvConfigFile + `                    config file path (default: ~/.config/sb/config.json)
-
-Precedence: flags > environment variables > config file.
-Run 'sb auth login' to save credentials for private projects.`,
+		Use:           "sb",
+		Short:         "Command line client for Scrapbox (Cosense)",
+		Long:          rootLong,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
@@ -50,23 +38,30 @@ Run 'sb auth login' to save credentials for private projects.`,
 	cmd.SetErr(app.IO.ErrOut)
 
 	pf := cmd.PersistentFlags()
-	pf.StringVarP(&gf.project, "project", "p", "", "project name (env: "+config.EnvProject+")")
+	pf.StringVarP(&gf.project, "project", "p", "", "project name (default: $"+config.EnvProject+" or config file)")
 	pf.StringVarP(&gf.output, "output", "o", string(output.Text), "output format: text|json")
-	pf.StringVar(&gf.baseURL, "base-url", "", "API base URL (env: "+config.EnvBaseURL+")")
-	pf.DurationVar(&gf.timeout, "timeout", 0, "request timeout (env: "+config.EnvTimeout+")")
-	pf.IntVar(&gf.retries, "retries", 0, "max retries on 429/5xx/network errors (default 3, env: "+config.EnvMaxRetries+")")
+	pf.StringVar(&gf.baseURL, "base-url", "", "API base URL (default: https://scrapbox.io/api)")
+	pf.DurationVar(&gf.timeout, "timeout", 0, "request timeout, e.g. 10s (default: 30s)")
+	pf.IntVar(&gf.retries, "retries", 0, "max retries on 429/5xx/network errors (default: 3)")
 
-	cmd.AddCommand(
-		newPageCmd(app),
-		newSearchCmd(app),
-		newContextCmd(app),
-		newProjectCmd(app),
-		newAuthCmd(app),
-		newConfigCmd(app),
-		newWhoamiCmd(app),
-		newVersionCmd(app),
+	cmd.AddGroup(
+		&cobra.Group{ID: groupRead, Title: "Read commands:"},
+		&cobra.Group{ID: groupSearch, Title: "Search commands:"},
+		&cobra.Group{ID: groupSettings, Title: "Auth and settings commands:"},
 	)
+	addToGroup(cmd, groupRead, newPageCmd(app), newContextCmd(app), newProjectCmd(app))
+	addToGroup(cmd, groupSearch, newSearchCmd(app))
+	addToGroup(cmd, groupSettings, newAuthCmd(app), newConfigCmd(app), newWhoamiCmd(app))
+	cmd.AddCommand(newVersionCmd(app), newEnvironmentTopic())
 	return cmd
+}
+
+// addToGroup はコマンドをグループに属させて親コマンドに追加する。
+func addToGroup(parent *cobra.Command, groupID string, cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.GroupID = groupID
+		parent.AddCommand(c)
+	}
 }
 
 // init は環境変数とフラグから設定を解決する。フラグは環境変数より優先する。
