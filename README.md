@@ -15,7 +15,7 @@ Scrapbox (Cosense) をコマンドラインから読む Go 製の CLI `sb`。現
 | 方法 | 手順 |
 |---|---|
 | バイナリ | [Releases](https://github.com/hiroki1117/scrapbox-cli/releases) から OS に合うアーカイブを取得し、中の `sb` を PATH の通った場所に置く |
-| go install | `go install github.com/hiroki1117/scrapbox-cli/cmd/sb@latest`（Go 1.26 以上） |
+| go install | `go install github.com/hiroki1117/scrapbox-cli/cmd/sb@latest`（Go 1.27 以上） |
 | ソースから | `git clone` 後に `make build`（`bin/sb` を生成） |
 
 バイナリは linux / macOS / Windows の amd64・arm64 向けを用意している。`sb version` でバージョンを確認できる。
@@ -208,7 +208,7 @@ GitHub Actions（`.github/workflows/ci.yml`）で push と Pull Request ごと�
 | ジョブ | 内容 |
 |---|---|
 | lint | `gofmt` の差分・`go mod tidy` の差分・`go vet`・golangci-lint |
-| test | ubuntu / macos / windows × Go 1.26（最小）・stable で `go test -race` |
+| test | ubuntu / macos / windows × Go 1.27（最小）・stable で `go test -race` |
 | vulncheck | govulncheck で依存モジュールと標準ライブラリの既知の脆弱性を検査 |
 | release-check | GoReleaser で全ターゲットをビルドし、リリース設定が壊れていないかを検査（公開はしない） |
 

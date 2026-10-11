@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -39,10 +40,8 @@ func TestHelpQuality(t *testing.T) {
 // isUnder はコマンドの祖先がいずれかのグループに属しているかを返す。
 func isUnder(c *cobra.Command, groupIDs ...string) bool {
 	for p := c.Parent(); p != nil; p = p.Parent() {
-		for _, id := range groupIDs {
-			if p.GroupID == id {
-				return true
-			}
+		if slices.Contains(groupIDs, p.GroupID) {
+			return true
 		}
 	}
 	return false

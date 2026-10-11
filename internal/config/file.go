@@ -12,7 +12,7 @@ import (
 // File は設定ファイル (JSON) の内容である。認証情報を含むため、パーミッション 0600 で保存する。
 type File struct {
 	Project     string      `json:"project,omitempty"`
-	Credentials Credentials `json:"credentials,omitempty"`
+	Credentials Credentials `json:"credentials,omitzero"`
 }
 
 // FilePath は設定ファイルのパスを返す。

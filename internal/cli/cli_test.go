@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -24,9 +25,7 @@ func runCmd(t *testing.T, handler http.Handler, env map[string]string, args ...s
 		config.EnvBaseURL:    srv.URL + "/api",
 		config.EnvConfigFile: filepath.Join(t.TempDir(), "config.json"),
 	}
-	for k, v := range env {
-		merged[k] = v
-	}
+	maps.Copy(merged, env)
 	var out, errOut bytes.Buffer
 	app := &App{
 		IO:     IOStreams{In: strings.NewReader(""), Out: &out, ErrOut: &errOut},
