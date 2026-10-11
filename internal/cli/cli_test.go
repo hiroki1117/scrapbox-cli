@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -18,7 +19,11 @@ func runCmd(t *testing.T, handler http.Handler, env map[string]string, args ...s
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	merged := map[string]string{config.EnvBaseURL: srv.URL + "/api"}
+	// 実環境の設定ファイルを読まないよう、設定ファイルを一時ディレクトリに隔離する。
+	merged := map[string]string{
+		config.EnvBaseURL:    srv.URL + "/api",
+		config.EnvConfigFile: filepath.Join(t.TempDir(), "config.json"),
+	}
 	for k, v := range env {
 		merged[k] = v
 	}
