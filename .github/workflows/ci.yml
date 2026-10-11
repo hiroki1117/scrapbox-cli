@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # フォーマット・go.mod の整合性・静的解析
+  # Formatting, go.mod consistency and static analysis
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -25,7 +25,7 @@ jobs:
         run: |
           unformatted=$(gofmt -l .)
           if [ -n "$unformatted" ]; then
-            echo "::error::gofmt が必要なファイルがある"; echo "$unformatted"; exit 1
+            echo "::error::files need gofmt"; echo "$unformatted"; exit 1
           fi
       - name: go mod tidy
         run: |
@@ -37,18 +37,18 @@ jobs:
         with:
           version: v2.14.0
 
-  # 主要 OS × Go バージョンでテストする
+  # Test on major OSes and Go versions
   test:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        # go.mod で宣言している最小バージョンと最新安定版
+        # The minimum version declared in go.mod and the latest stable
         go: ['1.27.x', stable]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        # Windows の PowerShell は -coverprofile=coverage.out の引数を分割してしまうため bash に統一する
+        # Use bash everywhere: PowerShell on Windows splits -coverprofile=coverage.out
         shell: bash
     steps:
       - uses: actions/checkout@v7
@@ -63,7 +63,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.go == 'stable'
         run: go tool cover -func=coverage.out | tail -1
 
-  # 依存モジュールと標準ライブラリの既知の脆弱性を検査する
+  # Check dependencies and the standard library for known vulnerabilities
   vulncheck:
     runs-on: ubuntu-latest
     steps:
@@ -73,7 +73,7 @@ jobs:
           go-version-input: stable
           go-package: ./...
 
-  # リリース設定 (.goreleaser.yaml) が壊れていないかを、公開せずに全ターゲットをビルドして確かめる
+  # Build all release targets without publishing to verify .goreleaser.yaml
   release-check:
     runs-on: ubuntu-latest
     steps:

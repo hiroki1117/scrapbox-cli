@@ -6,14 +6,14 @@ import (
 	"strings"
 )
 
-// escapeTitle はページタイトルを URL のパスセグメントにエスケープする。
-// Scrapbox の慣習に従い、半角スペースは "_" に置換する。
+// escapeTitle escapes a page title as a URL path segment.
+// Spaces become "_", as Scrapbox does.
 func escapeTitle(title string) string {
 	return escapeSegment(strings.ReplaceAll(title, " ", "_"))
 }
 
-// escapeSegment は文字列を 1 つのパスセグメントとしてエスケープする。
-// "." と ".." はパス正規化で消えないようにエスケープする。
+// escapeSegment escapes s as a single path segment.
+// "." and ".." are escaped so path cleaning does not remove them.
 func escapeSegment(s string) string {
 	switch s {
 	case ".":
@@ -24,14 +24,14 @@ func escapeSegment(s string) string {
 	return url.PathEscape(s)
 }
 
-// PageRef はプロジェクト名とページタイトルの組である。
+// PageRef is a project name and a page title.
 type PageRef struct {
 	Project string
 	Title   string
 }
 
-// ParsePageURL は https://scrapbox.io/<project>/<title> 形式の URL を PageRef に変換する。
-// タイトル中の "/" (エスケープ済み・未エスケープの両方) はタイトルの一部として扱う。
+// ParsePageURL parses a URL like https://scrapbox.io/<project>/<title>.
+// A "/" in the title, escaped or not, is part of the title.
 func ParsePageURL(raw string) (PageRef, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -47,7 +47,7 @@ func ParsePageURL(raw string) (PageRef, error) {
 	return PageRef{Project: project, Title: title}, nil
 }
 
-// IsURL は文字列が http(s) の URL として解釈できるかを返す。
+// IsURL reports whether s looks like an http(s) URL.
 func IsURL(s string) bool {
 	return strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://")
 }

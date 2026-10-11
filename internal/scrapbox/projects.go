@@ -2,10 +2,10 @@ package scrapbox
 
 import "context"
 
-// ProjectsService はプロジェクトに関する API を扱う。
+// ProjectsService handles project APIs.
 type ProjectsService service
 
-// Get はプロジェクトの情報を取得する。
+// Get fetches a project.
 //
 // GET /api/projects/:project
 func (s *ProjectsService) Get(ctx context.Context, project string) (*Project, error) {
@@ -16,7 +16,7 @@ func (s *ProjectsService) Get(ctx context.Context, project string) (*Project, er
 	return &out, nil
 }
 
-// List は認証ユーザーが参加しているプロジェクトの一覧を取得する。
+// List lists the projects the authenticated user belongs to.
 //
 // GET /api/projects
 func (s *ProjectsService) List(ctx context.Context) (*ProjectList, error) {

@@ -1,5 +1,5 @@
-// Package config は CLI の設定を設定ファイルと環境変数から読み込む。
-// 優先順位はフラグ > 環境変数 > 設定ファイル > デフォルト値である。フラグによる上書きは cli パッケージが行う。
+// Package config loads the CLI config from the config file and environment variables.
+// Precedence: flags > env > config file > defaults. The cli package applies flags.
 package config
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/hiroki1117/scrapbox-cli/internal/scrapbox"
 )
 
-// 環境変数名である。COSENSE_PROJECT_NAME / COSENSE_SID / SCRAPBOX_API_URL は scrapbox_mcp と共通である。
+// Environment variable names. COSENSE_PROJECT_NAME, COSENSE_SID and SCRAPBOX_API_URL are shared with scrapbox_mcp.
 const (
 	EnvProject           = "COSENSE_PROJECT_NAME"
 	EnvPersonalToken     = "COSENSE_PAT"
@@ -19,11 +19,11 @@ const (
 	EnvBaseURL           = "SCRAPBOX_API_URL"
 	EnvTimeout           = "SCRAPBOX_TIMEOUT"
 	EnvMaxRetries        = "SCRAPBOX_MAX_RETRIES"
-	// EnvConfigFile は設定ファイルのパスを上書きする。
+	// EnvConfigFile overrides the config file path.
 	EnvConfigFile = "SB_CONFIG"
 )
 
-// Source は設定値の取得元である。
+// Source is where a setting came from.
 type Source string
 
 const (
@@ -32,23 +32,23 @@ const (
 	SourceFile Source = "file"
 )
 
-// Config は CLI の設定である。
+// Config is the CLI config.
 type Config struct {
-	// Project はデフォルトのプロジェクト名である。
+	// Project is the default project name.
 	Project string
 	BaseURL string
 	Timeout time.Duration
-	// MaxRetries は一時的な失敗 (429 / 5xx / ネットワークエラー) を再試行する最大回数である。
+	// MaxRetries is the maximum number of retries on transient failures (429 / 5xx / network errors).
 	MaxRetries int
-	// Credentials は認証情報である。シェル履歴に残らないよう、フラグでは受け付けない。
+	// Credentials are never accepted as flags, to keep them out of shell history.
 	Credentials Credentials
-	// CredentialSource は Credentials の取得元である。
+	// CredentialSource is where Credentials came from.
 	CredentialSource Source
-	// FilePath は読み込んだ (または保存先となる) 設定ファイルのパスである。
+	// FilePath is the config file path to read from and write to.
 	FilePath string
 }
 
-// AuthType は認証方式である。
+// AuthType is an auth method.
 type AuthType string
 
 const (
@@ -59,7 +59,7 @@ const (
 
 var authTypes = []AuthType{AuthPersonalAccessToken, AuthServiceAccount, AuthSessionID}
 
-// ParseAuthType は文字列を AuthType に変換する。
+// ParseAuthType parses an AuthType.
 func ParseAuthType(s string) (AuthType, error) {
 	for _, t := range authTypes {
 		if AuthType(s) == t {
@@ -69,18 +69,18 @@ func ParseAuthType(s string) (AuthType, error) {
 	return "", fmt.Errorf("unknown auth type %q (available: %v)", s, authTypes)
 }
 
-// Credentials は認証情報である。複数設定されている場合は
-// Personal Access Token > Service Account Key > connect.sid の順に優先する。
+// Credentials are API credentials. If several are set, the precedence is
+// Personal Access Token > Service Account Key > connect.sid.
 type Credentials struct {
 	PersonalAccessToken string `json:"personalAccessToken,omitempty"`
 	ServiceAccountKey   string `json:"serviceAccountKey,omitempty"`
 	SessionID           string `json:"sessionId,omitempty"`
 }
 
-// IsZero は認証情報が 1 つも設定されていないかを返す。
+// IsZero reports whether no credential is set.
 func (c Credentials) IsZero() bool { return c == Credentials{} }
 
-// Active は優先順位に従って実際に使う認証方式と値を返す。未設定なら空文字を返す。
+// Active returns the auth method and value to use by precedence, or empty strings if none is set.
 func (c Credentials) Active() (AuthType, string) {
 	switch {
 	case c.PersonalAccessToken != "":
@@ -93,7 +93,7 @@ func (c Credentials) Active() (AuthType, string) {
 	return "", ""
 }
 
-// Authenticator は設定された認証情報に対応する Authenticator を返す。
+// Authenticator returns the Authenticator for the credentials.
 func (c Credentials) Authenticator() scrapbox.Authenticator {
 	typ, v := c.Active()
 	switch typ {
@@ -107,7 +107,7 @@ func (c Credentials) Authenticator() scrapbox.Authenticator {
 	return scrapbox.NoAuth{}
 }
 
-// NewCredentials は認証方式と値から Credentials を生成する。
+// NewCredentials creates Credentials from an auth method and a value.
 func NewCredentials(typ AuthType, value string) Credentials {
 	switch typ {
 	case AuthPersonalAccessToken:
@@ -120,7 +120,7 @@ func NewCredentials(typ AuthType, value string) Credentials {
 	return Credentials{}
 }
 
-// Load はデフォルト値・設定ファイル・環境変数の順に重ねた設定を返す。getenv には通常 os.Getenv を渡す。
+// Load returns defaults overlaid by the config file, then env. getenv is usually os.Getenv.
 func Load(getenv func(string) string) (Config, error) {
 	path, err := FilePath(getenv)
 	if err != nil {
@@ -145,7 +145,7 @@ func Load(getenv func(string) string) (Config, error) {
 	if v := getenv(EnvProject); v != "" {
 		cfg.Project = v
 	}
-	// 環境変数の認証情報が 1 つでもあれば、設定ファイルの認証情報とは混ぜずに環境変数だけを使う。
+	// If any credential is set in env, use only env credentials; never mix them with the file's.
 	envCreds := Credentials{
 		PersonalAccessToken: getenv(EnvPersonalToken),
 		ServiceAccountKey:   getenv(EnvServiceAccountKey),

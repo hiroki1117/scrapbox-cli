@@ -2,17 +2,17 @@ package scrapbox
 
 import "fmt"
 
-// Hops は関連ページの範囲である。関連ページリストと Smart Context で使う。
+// Hops is the range of related pages, used by related pages and Smart Context.
 type Hops int
 
 const (
-	// OneHop は起点ページとリンクでつながるページである。
+	// OneHop is the pages linked to or from the page.
 	OneHop Hops = 1
-	// TwoHop は 1 hop のページとリンクを共有するページである。
+	// TwoHop is the pages sharing a link with the 1-hop pages.
 	TwoHop Hops = 2
 )
 
-// Validate は Hops が API で扱える値かを検証する。
+// Validate reports an error if the API does not accept h.
 func (h Hops) Validate() error {
 	if h != OneHop && h != TwoHop {
 		return fmt.Errorf("hops must be 1 or 2, got %d", h)
@@ -20,12 +20,12 @@ func (h Hops) Validate() error {
 	return nil
 }
 
-// UserRef はページなどに埋め込まれるユーザー参照である。
+// UserRef is a user reference embedded in pages.
 type UserRef struct {
 	ID string `json:"id"`
 }
 
-// PageSummary はページ一覧に含まれるページの概要である。
+// PageSummary is a page in a page list.
 type PageSummary struct {
 	ID             string    `json:"id"`
 	Title          string    `json:"title"`
@@ -43,10 +43,10 @@ type PageSummary struct {
 	CharsCount     int       `json:"charsCount"`
 }
 
-// Pinned はページがピン留めされているかを返す。
+// Pinned reports whether the page is pinned.
 func (p PageSummary) Pinned() bool { return p.Pin != 0 }
 
-// PageList は GET /api/pages/:project のレスポンスである。
+// PageList is the response of GET /api/pages/:project.
 type PageList struct {
 	ProjectName string        `json:"projectName"`
 	Skip        int           `json:"skip"`
@@ -55,7 +55,7 @@ type PageList struct {
 	Pages       []PageSummary `json:"pages"`
 }
 
-// Line はページの 1 行である。先頭行はタイトルである。
+// Line is a line of a page. The first line is the title.
 type Line struct {
 	ID      string    `json:"id"`
 	Text    string    `json:"text"`
@@ -64,7 +64,7 @@ type Line struct {
 	Updated Timestamp `json:"updated"`
 }
 
-// Page は GET /api/pages/:project/:title のレスポンスである。
+// Page is the response of GET /api/pages/:project/:title.
 type Page struct {
 	PageSummary
 	CommitID     string       `json:"commitId"`
@@ -78,7 +78,7 @@ type Page struct {
 	RelatedPages RelatedPages `json:"relatedPages"`
 }
 
-// RelatedPages はページの関連ページリストである。
+// RelatedPages is the related page list of a page.
 type RelatedPages struct {
 	Links1Hop           []RelatedPage `json:"links1hop"`
 	Links2Hop           []RelatedPage `json:"links2hop"`
@@ -86,7 +86,7 @@ type RelatedPages struct {
 	HasBackLinksOrIcons bool          `json:"hasBackLinksOrIcons"`
 }
 
-// RelatedPage は関連ページリストの要素である。
+// RelatedPage is an item of a related page list.
 type RelatedPage struct {
 	ID           string    `json:"id"`
 	Title        string    `json:"title"`
@@ -101,7 +101,7 @@ type RelatedPage struct {
 	Accessed     Timestamp `json:"accessed"`
 }
 
-// SearchResult は全文検索のレスポンスである。
+// SearchResult is the response of a full-text search.
 type SearchResult struct {
 	ProjectName           string          `json:"projectName"`
 	SearchQuery           string          `json:"searchQuery"`
@@ -114,13 +114,13 @@ type SearchResult struct {
 	Pages                 []SearchHitPage `json:"pages"`
 }
 
-// ParsedQuery はサーバーが解釈した検索クエリである。
+// ParsedQuery is the search query as parsed by the server.
 type ParsedQuery struct {
 	Words    []string `json:"words"`
 	Excludes []string `json:"excludes"`
 }
 
-// SearchHitPage は検索でヒットしたページである。Lines はヒットした行の抜粋である。
+// SearchHitPage is a page found by search. Lines are the matched lines.
 type SearchHitPage struct {
 	ID      string    `json:"id"`
 	Title   string    `json:"title"`
@@ -133,7 +133,7 @@ type SearchHitPage struct {
 	Updated Timestamp `json:"updated"`
 }
 
-// TitleEntry は GET /api/pages/:project/search/titles の要素である。
+// TitleEntry is an item of GET /api/pages/:project/search/titles.
 type TitleEntry struct {
 	ID      string    `json:"id"`
 	Title   string    `json:"title"`
@@ -142,7 +142,7 @@ type TitleEntry struct {
 	Updated Timestamp `json:"updated"`
 }
 
-// Project は GET /api/projects/:project のレスポンスである。
+// Project is the response of GET /api/projects/:project.
 type Project struct {
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
@@ -159,13 +159,13 @@ type Project struct {
 	Updated        Timestamp `json:"updated"`
 }
 
-// ProjectList は GET /api/projects のレスポンスである。
+// ProjectList is the response of GET /api/projects.
 type ProjectList struct {
 	Projects []Project `json:"projects"`
 }
 
-// User は GET /api/users/me のレスポンスである。未ログイン時は IsGuest のみ true になる。
-// csrfToken などの秘匿値は意図的にフィールドに含めない。
+// User is the response of GET /api/users/me. For guests, only IsGuest is set.
+// Secrets such as csrfToken are deliberately left out.
 type User struct {
 	ID          string    `json:"id,omitempty"`
 	Name        string    `json:"name,omitempty"`
@@ -177,13 +177,13 @@ type User struct {
 	Updated     Timestamp `json:"updated,omitempty"`
 }
 
-// VectorSearchResult はベクトル検索のレスポンスである。
+// VectorSearchResult is the response of a vector search.
 type VectorSearchResult struct {
 	Pages []VectorHit `json:"pages"`
 }
 
-// VectorHit はベクトル検索でヒットしたページである。
-// Exists が false の空ページ (リンクだけが存在するページ) は ID や更新日時を持たない。
+// VectorHit is a page found by vector search.
+// Empty pages (Exists is false; they exist only as links) have no ID or timestamps.
 type VectorHit struct {
 	ID         string    `json:"id,omitempty"`
 	Title      string    `json:"title"`
@@ -199,17 +199,17 @@ type VectorHit struct {
 	Updated    Timestamp `json:"updated,omitempty"`
 }
 
-// RelatedResult は関連ページリストの取得結果である。
+// RelatedResult is the result of fetching related pages.
 type RelatedResult struct {
 	Hops       Hops          `json:"hops"`
 	Pages      []RelatedPage `json:"pages"`
 	Pagination Pagination    `json:"pagination"`
 }
 
-// Pagination は関連ページリストのページング情報である。
+// Pagination is the paging info of related pages.
 type Pagination struct {
 	PerPage int `json:"perPage"`
-	// Total は検索語で絞り込む前の関連ページ数である。
+	// Total is the number of related pages before filtering by search words.
 	Total   int    `json:"total"`
 	HasNext bool   `json:"hasNext"`
 	NextID  string `json:"nextId,omitempty"`

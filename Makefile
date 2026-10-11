@@ -20,6 +20,6 @@ vet:
 fmt:
 	gofmt -w .
 
-# リリースと同じ成果物を dist/ に生成する (公開はしない)。goreleaser が必要。
+# Build the release artifacts into dist/ without publishing. Requires goreleaser.
 snapshot:
 	goreleaser release --snapshot --clean

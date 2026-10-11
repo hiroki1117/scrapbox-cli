@@ -6,15 +6,15 @@ import (
 	"strconv"
 )
 
-// SearchOptions は全文検索のオプションである。
+// SearchOptions are options for full-text search.
 type SearchOptions struct {
-	// Limit は返すページ数の上限である。サーバーが limit を無視する場合があるため、クライアント側でも切り詰める。
+	// Limit is the maximum number of pages. The server may ignore it, so results are also truncated here.
 	Limit int
-	// Or が true なら、いずれかの語を含むページを返す。既定は AND 検索である。
+	// Or matches pages containing any of the words. The default is AND.
 	Or bool
 }
 
-// Search はプロジェクト内を全文検索する。
+// Search runs a full-text search in a project.
 //
 // GET /api/pages/:project/search/query?q=
 func (s *PagesService) Search(ctx context.Context, project, query string, opts *SearchOptions) (*SearchResult, error) {
@@ -37,9 +37,9 @@ func (s *PagesService) Search(ctx context.Context, project, query string, opts *
 	return &out, nil
 }
 
-// SearchVector は意味の近さでページを検索する。結果は類似度の高い順に並ぶ。
-// 検索対象はページタイトルと本文中のリンク記法だけで、本文の通常テキストは対象外である。
-// リンクだけが存在する空ページもヒットする (Exists が false)。
+// SearchVector finds pages by meaning, ordered by similarity.
+// Only page titles and links are searched, not plain body text.
+// Empty pages that exist only as links are included (Exists is false).
 //
 // GET /api/pages/:project/search/vector/titles?q=
 func (s *PagesService) SearchVector(ctx context.Context, project, query string) (*VectorSearchResult, error) {
@@ -51,16 +51,16 @@ func (s *PagesService) SearchVector(ctx context.Context, project, query string) 
 	return &out, nil
 }
 
-// RelatedOptions は関連ページ取得のオプションである。
+// RelatedOptions are options for fetching related pages.
 type RelatedOptions struct {
-	// Search を指定すると、本文に Search を含む関連ページだけに絞り込む (2 hop search)。
+	// Search keeps only related pages containing it (2 hop search).
 	Search string
-	// Or が true なら、Search のいずれかの語を含むページを返す。既定は AND である。
+	// Or matches pages containing any of the words in Search. The default is AND.
 	Or bool
 }
 
-// Related はページの関連ページリスト (1 hop / 2 hop link) を取得する。
-// 起点ページが存在しなくても、被リンクがあれば結果を返す。
+// Related fetches the related pages (1-hop or 2-hop links) of a page.
+// It returns results even if the page does not exist, as long as something links to it.
 //
 // GET /api/pages/v2/:project/:title/links1hop
 // GET /api/pages/v2/:project/:title/links2hop
@@ -77,7 +77,7 @@ func (s *PagesService) Related(ctx context.Context, project, title string, hops 
 			q.Set("op", "or")
 		}
 	}
-	// レスポンスのキーが hops によって links1hop / links2hop と異なるため、両方で受けてまとめる。
+	// The response key is links1hop or links2hop depending on hops.
 	var raw struct {
 		Links1Hop  []RelatedPage `json:"links1hop"`
 		Links2Hop  []RelatedPage `json:"links2hop"`

@@ -54,7 +54,7 @@ JSON output: {count, pages: [{title, lines, words, ...}], ...}`,
 						fmt.Fprintln(w)
 					}
 					fmt.Fprintln(w, p.Title)
-					// 先頭行はタイトルと重複するため除外する。
+					// Skip the line that repeats the title.
 					for _, l := range p.Lines {
 						if l == p.Title {
 							continue
@@ -86,8 +86,8 @@ Use this to find related topics when you do not know the exact keywords.
 
 Text output: SCORE, LINKED (backlink count), TITLE.
 JSON output: {pages: [{title, score, exists, linked, id?, updated?, ...}]}`,
-		Example: `  sb search vector "AIとの連携"
-  sb search vector 設計 レビュー --limit 10 -o json`,
+		Example: `  sb search vector "AI integration"
+  sb search vector design review --limit 10 -o json`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			project, client, err := app.projectClient()
@@ -151,7 +151,7 @@ JSON output: {hops, pages: [{title, descriptions, linksLc, ...}], pagination}`,
 	return cmd
 }
 
-// runRelated は関連ページを取得して出力する。page related と search related で共有する。
+// runRelated fetches and prints related pages. Shared by page related and search related.
 func runRelated(cmd *cobra.Command, app *App, arg string, hops int, opts *scrapbox.RelatedOptions) error {
 	ref, client, err := app.pageClient(arg)
 	if err != nil {

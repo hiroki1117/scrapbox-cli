@@ -13,7 +13,7 @@ linters:
     - usestdlibvars
   settings:
     errcheck:
-      # 出力先への書き込みエラーは CLI として扱いようがないため除外する
+      # A CLI cannot do anything useful about errors writing to stdout/stderr
       exclude-functions:
         - fmt.Fprint
         - fmt.Fprintf

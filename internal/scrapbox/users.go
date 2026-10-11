@@ -2,10 +2,10 @@ package scrapbox
 
 import "context"
 
-// UsersService はユーザーに関する API を扱う。
+// UsersService handles user APIs.
 type UsersService service
 
-// Me は認証ユーザーの情報を取得する。未認証の場合は IsGuest が true の User を返す。
+// Me fetches the authenticated user. Without authentication, it returns a User with IsGuest set.
 //
 // GET /api/users/me
 func (s *UsersService) Me(ctx context.Context) (*User, error) {

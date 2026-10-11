@@ -6,7 +6,7 @@ import (
 	"github.com/hiroki1117/scrapbox-cli/internal/config"
 )
 
-// コマンドグループの ID である。ルートのヘルプでコマンドを用途別に並べるために使う。
+// Command group IDs, used to group commands by purpose in the root help.
 const (
 	groupRead     = "read"
 	groupSearch   = "search"
@@ -31,7 +31,7 @@ Conventions:
 
 Run 'sb help environment' for environment variables and credentials.`
 
-// pageArgHelp はページを引数に取るコマンドの Long に添える説明である。
+// pageArgHelp is appended to the Long help of commands that take a page argument.
 const pageArgHelp = `<title|url> is a page title in the current project, or a page URL like
 https://scrapbox.io/<project>/<title>.`
 
@@ -50,8 +50,8 @@ which take precedence over the config file):
 If any credential variable is set, credentials in the config file are ignored.
 If several credentials are set, PAT > Service Account > connect.sid is used.`
 
-// newEnvironmentTopic は 'sb help environment' で表示するヘルプトピックである。
-// Run を持たないコマンドは cobra により "Additional help topics" として表示される。
+// newEnvironmentTopic is the help topic shown by 'sb help environment'.
+// cobra lists a command without Run under "Additional help topics".
 func newEnvironmentTopic() *cobra.Command {
 	return &cobra.Command{
 		Use:   "environment",
@@ -60,8 +60,8 @@ func newEnvironmentTopic() *cobra.Command {
 	}
 }
 
-// newGroupCmd はサブコマンドをまとめるだけのコマンドを生成する。
-// 引数なしならヘルプを表示し、未知のサブコマンドはエラーにする (cobra の既定ではヘルプを表示して正常終了してしまう)。
+// newGroupCmd creates a command that only groups subcommands.
+// It prints help without arguments and fails on unknown subcommands (by default cobra prints help and exits 0).
 func newGroupCmd(use, short, long string) *cobra.Command {
 	return &cobra.Command{
 		Use:   use,

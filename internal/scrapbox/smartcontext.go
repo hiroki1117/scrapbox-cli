@@ -6,10 +6,10 @@ import (
 	"net/url"
 )
 
-// SmartContextService は Smart Context (UI 名: Export for AI) API を扱う。
+// SmartContextService handles the Smart Context ("Export for AI") API.
 type SmartContextService service
 
-// Export は起点ページと関連ページの本文を LLM 向けに整形したテキストで返す。
+// Export returns a page and its related pages as text formatted for LLMs.
 //
 // GET /api/smart-context/export-:hopshop-links/:project.txt?title=
 func (s *SmartContextService) Export(ctx context.Context, project, title string, hops Hops) (string, error) {

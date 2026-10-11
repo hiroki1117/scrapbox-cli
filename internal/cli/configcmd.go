@@ -12,8 +12,8 @@ import (
 	"github.com/hiroki1117/scrapbox-cli/internal/config"
 )
 
-// configKey は config コマンドで読み書きできる設定項目である。
-// 項目を追加する場合は configKeys に登録する。認証情報は auth コマンドで扱うため登録しない。
+// configKey is a setting that the config command can read and write.
+// Register new settings in configKeys. Credentials are handled by the auth command, not here.
 type configKey struct {
 	help string
 	get  func(f *config.File) string

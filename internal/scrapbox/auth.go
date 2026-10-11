@@ -2,39 +2,39 @@ package scrapbox
 
 import "net/http"
 
-// Authenticator はリクエストに認証情報を付与する。
-// 新しい認証方式を追加する場合は、このインターフェースを実装する。
+// Authenticator adds credentials to requests.
+// Implement it to add a new auth method.
 type Authenticator interface {
 	Apply(req *http.Request)
 }
 
-// NoAuth は認証情報を付与しない。Public Project の参照に使う。
+// NoAuth adds no credentials. Use it for public projects.
 type NoAuth struct{}
 
-// Apply は何もしない。
+// Apply does nothing.
 func (NoAuth) Apply(*http.Request) {}
 
-// SessionCookie は connect.sid Cookie で認証する。
+// SessionCookie authenticates with the connect.sid cookie.
 type SessionCookie string
 
-// Apply は connect.sid Cookie を付与する。
+// Apply sets the connect.sid cookie.
 func (s SessionCookie) Apply(req *http.Request) {
 	req.AddCookie(&http.Cookie{Name: "connect.sid", Value: string(s)})
 }
 
-// PersonalAccessToken は Personal Access Token で認証する。
-// https://scrapbox.io/settings/personal-access-tokens で発行する。
+// PersonalAccessToken authenticates with a Personal Access Token,
+// issued at https://scrapbox.io/settings/personal-access-tokens.
 type PersonalAccessToken string
 
-// Apply は x-personal-access-token ヘッダを付与する。
+// Apply sets the x-personal-access-token header.
 func (t PersonalAccessToken) Apply(req *http.Request) {
 	req.Header.Set("x-personal-access-token", string(t))
 }
 
-// ServiceAccountKey は Service Account (Business プラン) のアクセスキーで認証する。
+// ServiceAccountKey authenticates with a Service Account access key (Business plan).
 type ServiceAccountKey string
 
-// Apply は x-service-account-access-key ヘッダを付与する。
+// Apply sets the x-service-account-access-key header.
 func (k ServiceAccountKey) Apply(req *http.Request) {
 	req.Header.Set("x-service-account-access-key", string(k))
 }

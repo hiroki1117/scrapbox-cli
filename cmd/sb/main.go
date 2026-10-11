@@ -1,4 +1,4 @@
-// Command sb は Scrapbox (Cosense) の CLI である。
+// Command sb is a command line client for Scrapbox (Cosense).
 package main
 
 import (
@@ -11,7 +11,7 @@ import (
 	"github.com/hiroki1117/scrapbox-cli/internal/cli"
 )
 
-// リリースビルドで -ldflags "-X main.version=..." により埋め込む。
+// Set by -ldflags "-X main.version=..." in release builds.
 var (
 	version = "dev"
 	commit  = "none"
@@ -41,7 +41,7 @@ func run() int {
 	return 0
 }
 
-// buildInfo は ldflags で埋め込まれていない値を、Go が記録したモジュール・VCS 情報で補う。
+// buildInfo fills values not set by ldflags from the module and VCS info recorded by Go.
 func buildInfo() cli.BuildInfo {
 	bi := cli.BuildInfo{Version: version, Commit: commit, Date: date}
 	info, ok := debug.ReadBuildInfo()

@@ -1,4 +1,4 @@
-// Package output はコマンド結果の出力形式 (text / json) を扱う。
+// Package output prints command results as text or JSON.
 package output
 
 import (
@@ -9,19 +9,19 @@ import (
 	"time"
 )
 
-// Format は出力形式である。
+// Format is an output format.
 type Format string
 
 const (
-	// Text は人間向けの整形済みテキストである。
+	// Text is formatted text for humans.
 	Text Format = "text"
-	// JSON は API のレスポンス構造を保った JSON である。スクリプトや jq との連携に使う。
+	// JSON keeps the API response structure. Use it with scripts and jq.
 	JSON Format = "json"
 )
 
 var formats = []Format{Text, JSON}
 
-// ParseFormat は文字列を Format に変換する。
+// ParseFormat parses a Format.
 func ParseFormat(s string) (Format, error) {
 	for _, f := range formats {
 		if Format(s) == f {
@@ -31,18 +31,18 @@ func ParseFormat(s string) (Format, error) {
 	return "", fmt.Errorf("unknown output format %q (available: %v)", s, formats)
 }
 
-// Printer は Format に応じて値を出力する。
+// Printer prints values in its Format.
 type Printer struct {
 	w      io.Writer
 	format Format
 }
 
-// NewPrinter は Printer を生成する。
+// NewPrinter creates a Printer.
 func NewPrinter(w io.Writer, format Format) *Printer {
 	return &Printer{w: w, format: format}
 }
 
-// Print は JSON 形式なら v を JSON で、Text 形式なら text 関数で出力する。
+// Print prints v as JSON in JSON format, or calls text in Text format.
 func (p *Printer) Print(v any, text func(w io.Writer) error) error {
 	if p.format == JSON {
 		enc := json.NewEncoder(p.w)
@@ -53,12 +53,12 @@ func (p *Printer) Print(v any, text func(w io.Writer) error) error {
 	return text(p.w)
 }
 
-// Table はタブ区切りの列を揃えて出力する tabwriter を返す。呼び出し側は Flush する必要がある。
+// Table returns a tabwriter that aligns tab-separated columns. Callers must Flush it.
 func Table(w io.Writer) *tabwriter.Writer {
 	return tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 }
 
-// Time は時刻を一覧表示向けのローカル時刻文字列にする。ゼロ値は "-" とする。
+// Time formats t in local time for lists. The zero time is "-".
 func Time(t time.Time) string {
 	if t.IsZero() || t.Unix() == 0 {
 		return "-"

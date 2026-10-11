@@ -1,7 +1,7 @@
-// Package cli は sb コマンドのサブコマンド定義を提供する。
+// Package cli defines the subcommands of sb.
 //
-// 各サブコマンドは App から Client / Printer / 設定を受け取る。
-// 新しいコマンドを追加する場合は newXxxCmd(app *App) *cobra.Command を定義し、親コマンドに AddCommand する。
+// Each subcommand gets the Client, Printer and config from App.
+// To add a command, define newXxxCmd(app *App) *cobra.Command and AddCommand it to its parent.
 package cli
 
 import (
@@ -15,27 +15,27 @@ import (
 	"github.com/hiroki1117/scrapbox-cli/internal/scrapbox"
 )
 
-// IOStreams はコマンドの入出力先である。テストではバッファに差し替える。
+// IOStreams are the command's input and outputs. Tests replace them with buffers.
 type IOStreams struct {
 	In     io.Reader
 	Out    io.Writer
 	ErrOut io.Writer
 }
 
-// BuildInfo はビルド時に埋め込むバージョン情報である。
+// BuildInfo is the version information embedded at build time.
 type BuildInfo struct {
 	Version string
 	Commit  string
 	Date    string
 }
 
-// App はコマンド間で共有する依存関係である。
-// 設定と出力形式はルートコマンドの PersistentPreRunE で解決し、Printer と Client は初回利用時に生成する。
+// App holds the dependencies shared by commands.
+// The config and output format are resolved in the root PersistentPreRunE; Printer and Client are created on first use.
 type App struct {
 	IO        IOStreams
 	Getenv    func(string) string
 	BuildInfo BuildInfo
-	// HTTPClient が nil の場合は scrapbox パッケージのデフォルトを使う。
+	// If HTTPClient is nil, the scrapbox package default is used.
 	HTTPClient *http.Client
 
 	cfg     config.Config
@@ -44,7 +44,7 @@ type App struct {
 	client  *scrapbox.Client
 }
 
-// Printer は出力形式に応じた Printer を返す。
+// Printer returns the Printer for the output format.
 func (a *App) Printer() *output.Printer {
 	if a.printer == nil {
 		a.printer = output.NewPrinter(a.IO.Out, a.format)
@@ -52,7 +52,7 @@ func (a *App) Printer() *output.Printer {
 	return a.printer
 }
 
-// Client は設定された認証情報を使う Scrapbox API クライアントを返す。初回呼び出し時に生成する。
+// Client returns the API client using the configured credentials, created on first call.
 func (a *App) Client() (*scrapbox.Client, error) {
 	if a.client != nil {
 		return a.client, nil
@@ -65,10 +65,10 @@ func (a *App) Client() (*scrapbox.Client, error) {
 	return c, nil
 }
 
-// NewClient は指定した認証方式で Scrapbox API クライアントを生成する。
-// 保存前の認証情報を検証する auth login などで使う。
+// NewClient creates an API client with the given authenticator.
+// auth login uses it to verify a credential before saving it.
 func (a *App) NewClient(auth scrapbox.Authenticator) (*scrapbox.Client, error) {
-	// 注入された *http.Client を書き換えないようコピーしてからタイムアウトを設定する。
+	// Copy the injected *http.Client before setting the timeout so it is not modified.
 	var hc http.Client
 	if a.HTTPClient != nil {
 		hc = *a.HTTPClient
@@ -90,10 +90,10 @@ func (a *App) NewClient(auth scrapbox.Authenticator) (*scrapbox.Client, error) {
 	)
 }
 
-// errNoProject はプロジェクトが特定できないときのエラーである。
+// errNoProject is returned when no project is specified.
 var errNoProject = fmt.Errorf("project is not specified: use --project, set %s, or run 'sb config set project <name>'", config.EnvProject)
 
-// Project は対象プロジェクト名を返す。未設定ならエラーにする。
+// Project returns the target project name, or an error if it is not set.
 func (a *App) Project() (string, error) {
 	if a.cfg.Project == "" {
 		return "", errNoProject
@@ -101,8 +101,8 @@ func (a *App) Project() (string, error) {
 	return a.cfg.Project, nil
 }
 
-// PageRef はコマンド引数をページ参照に変換する。
-// 引数がページ URL ならその URL のプロジェクトを、そうでなければ設定されたプロジェクトを使う。
+// PageRef converts a command argument to a page reference.
+// A page URL uses its own project; a title uses the configured project.
 func (a *App) PageRef(arg string) (scrapbox.PageRef, error) {
 	if scrapbox.IsURL(arg) {
 		return scrapbox.ParsePageURL(arg)
@@ -114,7 +114,7 @@ func (a *App) PageRef(arg string) (scrapbox.PageRef, error) {
 	return scrapbox.PageRef{Project: project, Title: arg}, nil
 }
 
-// projectClient は対象プロジェクトと API クライアントを返す。
+// projectClient returns the target project and the API client.
 func (a *App) projectClient() (string, *scrapbox.Client, error) {
 	project, err := a.Project()
 	if err != nil {
@@ -124,7 +124,7 @@ func (a *App) projectClient() (string, *scrapbox.Client, error) {
 	return project, client, err
 }
 
-// pageClient はページ引数を解決し、API クライアントとともに返す。
+// pageClient resolves a page argument and returns it with the API client.
 func (a *App) pageClient(arg string) (scrapbox.PageRef, *scrapbox.Client, error) {
 	ref, err := a.PageRef(arg)
 	if err != nil {
@@ -134,7 +134,7 @@ func (a *App) pageClient(arg string) (scrapbox.PageRef, *scrapbox.Client, error)
 	return ref, client, err
 }
 
-// ErrorHint はエラーに応じて利用者向けの対処方法を返す。対処方法がなければ空文字を返す。
+// ErrorHint returns a hint for fixing err, or an empty string if there is none.
 func ErrorHint(err error) string {
 	switch {
 	case errors.Is(err, scrapbox.ErrUnauthorized), errors.Is(err, scrapbox.ErrForbidden):

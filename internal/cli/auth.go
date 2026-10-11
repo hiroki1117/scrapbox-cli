@@ -79,7 +79,7 @@ It is never accepted as a command line argument to keep it out of shell history.
 	return cmd
 }
 
-// readSecret は認証情報を読み込む。端末ならエコーなしのプロンプトで、それ以外は標準入力の 1 行目を読む。
+// readSecret reads a credential: from a hidden prompt on a terminal, otherwise from the first line of stdin.
 func readSecret(app *App, fromStdin bool, prompt string) (string, error) {
 	var secret string
 	if f, ok := app.IO.In.(*os.File); ok && !fromStdin && term.IsTerminal(int(f.Fd())) {
@@ -104,13 +104,13 @@ func readSecret(app *App, fromStdin bool, prompt string) (string, error) {
 	return secret, nil
 }
 
-// verifyCredentials は認証情報で API にアクセスできるかを確認する。
+// verifyCredentials checks that the credential can access the API.
 func verifyCredentials(cmd *cobra.Command, app *App, typ config.AuthType, creds config.Credentials) error {
 	client, err := app.NewClient(creds.Authenticator())
 	if err != nil {
 		return err
 	}
-	// Service Account はユーザーに紐づかないため、プロジェクトへのアクセスで確認する。
+	// A Service Account has no user, so verify it against a project.
 	if typ == config.AuthServiceAccount {
 		project, err := app.Project()
 		if err != nil {
@@ -133,7 +133,7 @@ func verifyCredentials(cmd *cobra.Command, app *App, typ config.AuthType, creds 
 	return nil
 }
 
-// authStatus は auth status の出力である。認証情報そのものは含めない。
+// authStatus is the output of auth status. It never contains the credential itself.
 type authStatus struct {
 	ConfigFile string        `json:"configFile"`
 	Source     config.Source `json:"source"`
@@ -223,7 +223,7 @@ func newAuthLogoutCmd(app *App) *cobra.Command {
 	}
 }
 
-// mask は認証情報の先頭 4 文字だけを残して伏せる。
+// mask hides a credential except its first 4 characters.
 func mask(s string) string {
 	if s == "" {
 		return ""

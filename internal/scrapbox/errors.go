@@ -8,19 +8,19 @@ import (
 	"net/http"
 )
 
-// errors.Is で判定するための番兵エラーである。
+// Sentinel errors for errors.Is.
 var (
 	ErrUnauthorized = errors.New("unauthorized")
 	ErrForbidden    = errors.New("forbidden")
 	ErrNotFound     = errors.New("not found")
 )
 
-// APIError は API が 2xx 以外を返したときのエラーである。
+// APIError is returned when the API responds with a non-2xx status.
 type APIError struct {
 	StatusCode int
 	Method     string
 	URL        string
-	// Name と Message は Scrapbox のエラーレスポンス {"name": "...", "message": "..."} の値である。
+	// Name and Message come from the Scrapbox error response {"name": "...", "message": "..."}.
 	Name    string
 	Message string
 }
@@ -36,7 +36,7 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("%s %s: %d %s", e.Method, e.URL, e.StatusCode, msg)
 }
 
-// Is はステータスコードを番兵エラーに対応付ける。
+// Is maps the status code to the sentinel errors.
 func (e *APIError) Is(target error) bool {
 	switch target {
 	case ErrUnauthorized:
@@ -49,7 +49,7 @@ func (e *APIError) Is(target error) bool {
 	return false
 }
 
-// maxErrorBody はエラーレスポンスとして読み込むボディの上限である。
+// maxErrorBody is the maximum size of an error response body to read.
 const maxErrorBody = 64 << 10
 
 func newAPIError(req *http.Request, resp *http.Response) *APIError {

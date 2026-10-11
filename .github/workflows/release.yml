@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # changelog の生成に過去のタグが必要
+          # Previous tags are needed to generate the changelog
           fetch-depth: 0
       - uses: actions/setup-go@v7
         with:

@@ -10,7 +10,7 @@ import (
 	"github.com/hiroki1117/scrapbox-cli/internal/output"
 )
 
-// globalFlags はすべてのサブコマンドで使えるフラグである。
+// globalFlags are flags available to all subcommands.
 type globalFlags struct {
 	project string
 	output  string
@@ -19,7 +19,7 @@ type globalFlags struct {
 	retries int
 }
 
-// NewRootCmd はルートコマンドを生成する。
+// NewRootCmd creates the root command.
 func NewRootCmd(app *App) *cobra.Command {
 	var gf globalFlags
 
@@ -56,7 +56,7 @@ func NewRootCmd(app *App) *cobra.Command {
 	return cmd
 }
 
-// addToGroup はコマンドをグループに属させて親コマンドに追加する。
+// addToGroup adds commands to parent under the given group.
 func addToGroup(parent *cobra.Command, groupID string, cmds ...*cobra.Command) {
 	for _, c := range cmds {
 		c.GroupID = groupID
@@ -64,7 +64,7 @@ func addToGroup(parent *cobra.Command, groupID string, cmds ...*cobra.Command) {
 	}
 }
 
-// init は環境変数とフラグから設定を解決する。フラグは環境変数より優先する。
+// init resolves the config from env and flags. Flags take precedence over env.
 func (a *App) init(cmd *cobra.Command, gf globalFlags) error {
 	cfg, err := config.Load(a.Getenv)
 	if err != nil {

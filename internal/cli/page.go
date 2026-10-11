@@ -88,7 +88,7 @@ JSON output: {projectName, count, skip, limit, pages: [{title, descriptions,
 
 			var list *scrapbox.PageList
 			if all {
-				// JSON の形を --all の有無で変えないよう、PageList に詰め直す。
+				// Wrap in a PageList so the JSON shape is the same with or without --all.
 				list = &scrapbox.PageList{ProjectName: project, Skip: opts.Skip, Pages: []scrapbox.PageSummary{}}
 				for p, err := range client.Pages.ListAll(cmd.Context(), project, &opts) {
 					if err != nil {
@@ -250,7 +250,7 @@ Output is always CSV (-o is ignored) so it can be redirected to a file.`,
 	}
 }
 
-// fetchPage は引数のページを取得する。
+// fetchPage fetches the page given as an argument.
 func fetchPage(cmd *cobra.Command, app *App, arg string) (*scrapbox.Page, error) {
 	ref, client, err := app.pageClient(arg)
 	if err != nil {
@@ -259,11 +259,11 @@ func fetchPage(cmd *cobra.Command, app *App, arg string) (*scrapbox.Page, error)
 	return client.Pages.Get(cmd.Context(), ref.Project, ref.Title)
 }
 
-// rawFetcher はページ内のファイル (コードブロック・テーブル) を生テキストで取得する関数である。
+// rawFetcher fetches a file in a page (code block or table) as raw text.
 type rawFetcher func(s *scrapbox.PagesService, ctx context.Context, project, title, filename string) (string, error)
 
-// printRaw はページ内のファイルを取得し、出力形式に関わらずそのまま出力する。
-// コードや CSV はリダイレクトしてファイルに保存する用途を想定するため、JSON には包まない。
+// printRaw fetches a file in a page and prints it as-is, regardless of the output format.
+// Code and CSV are meant to be redirected to files, so they are not wrapped in JSON.
 func printRaw(cmd *cobra.Command, app *App, arg, filename string, fetch rawFetcher) error {
 	ref, client, err := app.pageClient(arg)
 	if err != nil {

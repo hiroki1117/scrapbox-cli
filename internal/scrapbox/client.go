@@ -1,7 +1,7 @@
-// Package scrapbox は Scrapbox (Cosense) REST API のクライアントを提供する。
+// Package scrapbox is a client for the Scrapbox (Cosense) REST API.
 //
-// エンドポイントはリソースごとにサービス (Pages, Projects, Users, SmartContext) へ分割している。
-// 新しい API を追加する場合は、該当サービスにメソッドを追加するか、新しいサービスを定義して Client に登録する。
+// Endpoints are grouped into services by resource (Pages, Projects, Users, SmartContext).
+// To add an API, add a method to a service, or define a new service and register it in Client.
 package scrapbox
 
 import (
@@ -16,15 +16,15 @@ import (
 )
 
 const (
-	// DefaultBaseURL は Scrapbox REST API のベース URL である。
+	// DefaultBaseURL is the base URL of the Scrapbox REST API.
 	DefaultBaseURL = "https://scrapbox.io/api"
-	// DefaultTimeout は HTTP リクエストのデフォルトタイムアウトである。
+	// DefaultTimeout is the default HTTP request timeout.
 	DefaultTimeout = 30 * time.Second
 
 	defaultUserAgent = "scrapbox-cli"
 )
 
-// Client は Scrapbox REST API のクライアントである。
+// Client is a Scrapbox REST API client.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
@@ -38,15 +38,15 @@ type Client struct {
 	SmartContext *SmartContextService
 }
 
-// service は各サービスが共有する Client への参照である。
+// service is the Client reference shared by all services.
 type service struct {
 	client *Client
 }
 
-// Option は Client の設定を変更する。
+// Option configures a Client.
 type Option func(*Client) error
 
-// WithBaseURL は API のベース URL を変更する。テストやセルフホスト環境向けである。
+// WithBaseURL sets the API base URL, for tests and self-hosted servers.
 func WithBaseURL(raw string) Option {
 	return func(c *Client) error {
 		u, err := url.Parse(raw)
@@ -61,7 +61,7 @@ func WithBaseURL(raw string) Option {
 	}
 }
 
-// WithHTTPClient は内部で使う *http.Client を差し替える。
+// WithHTTPClient sets the *http.Client to use.
 func WithHTTPClient(hc *http.Client) Option {
 	return func(c *Client) error {
 		c.httpClient = hc
@@ -69,7 +69,7 @@ func WithHTTPClient(hc *http.Client) Option {
 	}
 }
 
-// WithAuthenticator は認証方式を設定する。
+// WithAuthenticator sets the auth method.
 func WithAuthenticator(a Authenticator) Option {
 	return func(c *Client) error {
 		c.auth = a
@@ -77,7 +77,7 @@ func WithAuthenticator(a Authenticator) Option {
 	}
 }
 
-// WithUserAgent は User-Agent ヘッダを設定する。
+// WithUserAgent sets the User-Agent header.
 func WithUserAgent(ua string) Option {
 	return func(c *Client) error {
 		c.userAgent = ua
@@ -85,7 +85,7 @@ func WithUserAgent(ua string) Option {
 	}
 }
 
-// NewClient は Client を生成する。
+// NewClient creates a Client.
 func NewClient(opts ...Option) (*Client, error) {
 	c := &Client{
 		baseURL:    DefaultBaseURL,
@@ -108,7 +108,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// newRequest は API のパス (エスケープ済み、先頭の "/" なし) から GET リクエストを組み立てる。
+// newRequest builds a GET request for an API path (escaped, without a leading "/").
 func (c *Client) newRequest(ctx context.Context, path string, query url.Values) (*http.Request, error) {
 	u := c.baseURL + "/" + path
 	if len(query) > 0 {
@@ -123,9 +123,9 @@ func (c *Client) newRequest(ctx context.Context, path string, query url.Values) 
 	return req, nil
 }
 
-// do はリクエストを送り、2xx 以外のレスポンスを *APIError に変換する。
-// 一時的な失敗は RetryPolicy に従って再試行する。成功時は呼び出し側が resp.Body を閉じる責務を持つ。
-// リクエストはボディを持たない GET のみを想定しているため、同じ *http.Request を再送できる。
+// do sends req and converts non-2xx responses to *APIError.
+// Transient failures are retried by the RetryPolicy. On success, the caller must close resp.Body.
+// Requests are body-less GETs, so the same *http.Request can be resent.
 func (c *Client) do(req *http.Request) (*http.Response, error) {
 	for attempt := 0; ; attempt++ {
 		resp, err := c.httpClient.Do(req)
@@ -151,8 +151,8 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	}
 }
 
-// getJSON は GET リクエストを送り、レスポンスボディを v にデコードする。
-// ページングなどでヘッダが必要な呼び出し側のために、レスポンスヘッダを返す。
+// getJSON sends a GET request and decodes the response body into v.
+// It returns the response header for callers that need it, e.g. for paging.
 func (c *Client) getJSON(ctx context.Context, path string, query url.Values, v any) (http.Header, error) {
 	req, err := c.newRequest(ctx, path, query)
 	if err != nil {
@@ -170,7 +170,7 @@ func (c *Client) getJSON(ctx context.Context, path string, query url.Values, v a
 	return resp.Header, nil
 }
 
-// getText は GET リクエストを送り、レスポンスボディを文字列として返す。
+// getText sends a GET request and returns the response body as a string.
 func (c *Client) getText(ctx context.Context, path string, query url.Values) (string, error) {
 	req, err := c.newRequest(ctx, path, query)
 	if err != nil {

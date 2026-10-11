@@ -42,7 +42,7 @@ func TestLoad_Precedence(t *testing.T) {
 		if cfg.Project != "envproj" || cfg.CredentialSource != SourceEnv {
 			t.Errorf("unexpected config: %+v", cfg)
 		}
-		// 設定ファイルの PAT が優先されず、環境変数の SID が使われること。
+		// The SID from env is used, not the PAT from the file.
 		if typ, v := cfg.Credentials.Active(); typ != AuthSessionID || v != "envsid" {
 			t.Errorf("active = %s %s", typ, v)
 		}
@@ -68,7 +68,7 @@ func TestWriteFile_Permission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Windows はパーミッションビットを持たないため検証しない。
+	// Windows has no permission bits.
 	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
 		t.Errorf("perm = %o, want 600", perm)
 	}

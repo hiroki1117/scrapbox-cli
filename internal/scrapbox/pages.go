@@ -7,17 +7,17 @@ import (
 	"strconv"
 )
 
-// PagesService はページに関する API を扱う。
+// PagesService handles page APIs.
 type PagesService service
 
-// MaxListLimit は 1 回のページ一覧取得で指定できる件数の上限である。
+// MaxListLimit is the maximum number of pages per list request.
 const MaxListLimit = 1000
 
-// ListOptions はページ一覧取得のオプションである。ゼロ値はサーバーのデフォルトを使う。
+// ListOptions are options for listing pages. Zero values use the server defaults.
 type ListOptions struct {
 	Limit int
 	Skip  int
-	// Sort はソートキーである (updated, created, accessed, linked, views, title など)。
+	// Sort is the sort key (updated, created, accessed, linked, views, title, ...).
 	Sort string
 }
 
@@ -38,7 +38,7 @@ func (o *ListOptions) values() url.Values {
 	return q
 }
 
-// List はプロジェクトのページ一覧を取得する。
+// List lists pages in a project.
 //
 // GET /api/pages/:project
 func (s *PagesService) List(ctx context.Context, project string, opts *ListOptions) (*PageList, error) {
@@ -49,8 +49,8 @@ func (s *PagesService) List(ctx context.Context, project string, opts *ListOptio
 	return &out, nil
 }
 
-// ListAll は opts.Skip から最後のページまで、ページングしながら全件を返す。
-// opts.Limit は 1 リクエストあたりの件数として扱う。
+// ListAll yields all pages from opts.Skip to the end, paging automatically.
+// opts.Limit is used as the number of pages per request.
 func (s *PagesService) ListAll(ctx context.Context, project string, opts *ListOptions) iter.Seq2[PageSummary, error] {
 	return func(yield func(PageSummary, error) bool) {
 		o := ListOptions{Limit: MaxListLimit}
@@ -79,7 +79,7 @@ func (s *PagesService) ListAll(ctx context.Context, project string, opts *ListOp
 	}
 }
 
-// Get はページの本文とメタデータを取得する。
+// Get fetches the content and metadata of a page.
 //
 // GET /api/pages/:project/:title
 func (s *PagesService) Get(ctx context.Context, project, title string) (*Page, error) {
@@ -91,8 +91,8 @@ func (s *PagesService) Get(ctx context.Context, project, title string) (*Page, e
 	return &out, nil
 }
 
-// Titles はプロジェクトの全ページのタイトルとリンクを返す。
-// サーバーは X-Following-Id ヘッダで次のページを示すため、それに従ってページングする。
+// Titles yields the title and links of every page in a project.
+// It pages by following the X-Following-Id response header.
 //
 // GET /api/pages/:project/search/titles
 func (s *PagesService) Titles(ctx context.Context, project string) iter.Seq2[TitleEntry, error] {
@@ -124,7 +124,7 @@ func (s *PagesService) Titles(ctx context.Context, project string) iter.Seq2[Tit
 	}
 }
 
-// Code はページ内のコードブロックの内容を取得する。filename はコードブロックの見出し (code:xxx の xxx) である。
+// Code fetches a code block in a page. filename is the xxx in code:xxx.
 //
 // GET /api/code/:project/:title/:filename
 func (s *PagesService) Code(ctx context.Context, project, title, filename string) (string, error) {
@@ -132,7 +132,7 @@ func (s *PagesService) Code(ctx context.Context, project, title, filename string
 	return s.client.getText(ctx, path, nil)
 }
 
-// Table はページ内のテーブル (table:xxx) を CSV として取得する。
+// Table fetches a table (table:xxx) in a page as CSV.
 //
 // GET /api/table/:project/:title/:filename.csv
 func (s *PagesService) Table(ctx context.Context, project, title, filename string) (string, error) {

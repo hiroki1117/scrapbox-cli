@@ -14,13 +14,13 @@ import (
 	"github.com/hiroki1117/scrapbox-cli/internal/config"
 )
 
-// runCmd はテスト用 API サーバーと環境変数でコマンドを実行し、stdout を返す。
+// runCmd runs a command against a test API server with env, and returns stdout.
 func runCmd(t *testing.T, handler http.Handler, env map[string]string, args ...string) (string, error) {
 	t.Helper()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	// 実環境の設定ファイルを読まないよう、設定ファイルを一時ディレクトリに隔離する。
+	// Isolate the config file in a temp dir so the real one is never read.
 	merged := map[string]string{
 		config.EnvBaseURL:    srv.URL + "/api",
 		config.EnvConfigFile: filepath.Join(t.TempDir(), "config.json"),
@@ -127,7 +127,7 @@ func TestErrors(t *testing.T) {
 	}
 }
 
-// runWithConfig は設定ファイルのパスと標準入力を指定してコマンドを実行する。
+// runWithConfig runs a command with the given config file path and stdin.
 func runWithConfig(t *testing.T, handler http.Handler, cfgPath, stdin string, args ...string) (string, string, error) {
 	t.Helper()
 	srv := httptest.NewServer(handler)

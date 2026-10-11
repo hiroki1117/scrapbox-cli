@@ -1,5 +1,5 @@
-# GoReleaser の設定。v から始まるタグの push で .github/workflows/release.yml が実行する。
-# ローカルでの確認: goreleaser release --snapshot --clean
+# GoReleaser config. Run by .github/workflows/release.yml when a v* tag is pushed.
+# Try locally: goreleaser release --snapshot --clean
 version: 2
 
 before:

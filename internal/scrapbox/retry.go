@@ -10,25 +10,25 @@ import (
 	"time"
 )
 
-// RetryPolicy は一時的な失敗に対する再試行の方針である。
-// 対象はネットワークエラーと 429 / 502 / 503 / 504 である。GET のみを送るため安全に再送できる。
+// RetryPolicy controls retries of transient failures:
+// network errors and 429 / 502 / 503 / 504. Only GET is sent, so retrying is safe.
 type RetryPolicy struct {
-	// MaxRetries は最初の試行に加えて再試行する最大回数である。0 なら再試行しない。
+	// MaxRetries is the maximum number of retries after the first attempt. 0 disables retries.
 	MaxRetries int
-	// BaseDelay は指数バックオフの初期待機時間である。
+	// BaseDelay is the initial delay of the exponential backoff.
 	BaseDelay time.Duration
-	// MaxDelay は 1 回あたりの待機時間の上限である。Retry-After ヘッダの値にも適用する。
+	// MaxDelay caps each delay, including the Retry-After header value.
 	MaxDelay time.Duration
 }
 
-// DefaultRetryPolicy は Client のデフォルトの再試行方針である。
+// DefaultRetryPolicy is the default retry policy of Client.
 var DefaultRetryPolicy = RetryPolicy{
 	MaxRetries: 3,
 	BaseDelay:  500 * time.Millisecond,
 	MaxDelay:   10 * time.Second,
 }
 
-// WithRetryPolicy は再試行の方針を変更する。
+// WithRetryPolicy sets the retry policy.
 func WithRetryPolicy(p RetryPolicy) Option {
 	return func(c *Client) error {
 		if p.MaxRetries < 0 {
@@ -39,7 +39,7 @@ func WithRetryPolicy(p RetryPolicy) Option {
 	}
 }
 
-// retryable はレスポンスのステータスコードが再試行の対象かを返す。
+// retryable reports whether a response status should be retried.
 func retryable(status int) bool {
 	switch status {
 	case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
@@ -48,8 +48,8 @@ func retryable(status int) bool {
 	return false
 }
 
-// delay は attempt 回目 (0 始まり) の再試行までの待機時間を返す。
-// Retry-After ヘッダがあればそれに従い、なければ full jitter 付きの指数バックオフにする。
+// delay returns the wait before retry number attempt (0-based).
+// It follows Retry-After if present, otherwise uses exponential backoff with full jitter.
 func (p RetryPolicy) delay(attempt int, resp *http.Response) time.Duration {
 	if resp != nil {
 		if d, ok := parseRetryAfter(resp.Header.Get("Retry-After")); ok {
@@ -57,7 +57,7 @@ func (p RetryPolicy) delay(attempt int, resp *http.Response) time.Duration {
 		}
 	}
 	backoff := p.BaseDelay << attempt
-	if backoff <= 0 || backoff > p.MaxDelay { // シフトのオーバーフローも上限に丸める
+	if backoff <= 0 || backoff > p.MaxDelay { // also caps shift overflow
 		backoff = p.MaxDelay
 	}
 	if backoff <= 0 {
@@ -66,7 +66,7 @@ func (p RetryPolicy) delay(attempt int, resp *http.Response) time.Duration {
 	return rand.N(backoff + 1)
 }
 
-// parseRetryAfter は Retry-After ヘッダ (秒数 または HTTP 日付) を解釈する。
+// parseRetryAfter parses a Retry-After header (seconds or an HTTP date).
 func parseRetryAfter(v string) (time.Duration, bool) {
 	if v == "" {
 		return 0, false
@@ -80,7 +80,7 @@ func parseRetryAfter(v string) (time.Duration, bool) {
 	return 0, false
 }
 
-// sleep は d だけ待つ。ctx がキャンセルされたら即座に ctx のエラーを返す。
+// sleep waits for d, or returns the ctx error as soon as ctx is canceled.
 func sleep(ctx context.Context, d time.Duration) error {
 	if d <= 0 {
 		return ctx.Err()
@@ -95,7 +95,7 @@ func sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
-// discard は再試行前にレスポンスボディを読み捨てて閉じ、コネクションを再利用できるようにする。
+// discard drains and closes the body before a retry so the connection can be reused.
 func discard(resp *http.Response) {
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxErrorBody))
 	_ = resp.Body.Close()

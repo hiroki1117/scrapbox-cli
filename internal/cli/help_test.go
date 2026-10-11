@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TestHelpQuality は AI エージェントや利用者がヘルプだけで使い方を判断できるよう、
-// コマンドのヘルプに必要な情報がそろっていることを検査する。
+// TestHelpQuality checks that command help has what users and AI agents need
+// to use the command from the help alone.
 func TestHelpQuality(t *testing.T) {
 	root := NewRootCmd(&App{})
 	var walk func(c *cobra.Command)
@@ -22,7 +22,7 @@ func TestHelpQuality(t *testing.T) {
 			if sub.Short == "" {
 				t.Errorf("%s: Short is empty", path)
 			}
-			// 参照系・検索系の末端コマンドには、出力形式の説明と使用例を必須とする。
+			// Read and search leaf commands must describe their output and have examples.
 			if !sub.HasSubCommands() && (inGroup(sub, groupRead, groupSearch)) {
 				if !strings.Contains(strings.ToLower(sub.Long), "output") {
 					t.Errorf("%s: Long must describe the output", path)
@@ -37,7 +37,7 @@ func TestHelpQuality(t *testing.T) {
 	walk(root)
 }
 
-// inGroup はコマンド自身または祖先がいずれかのグループに属しているかを返す。
+// inGroup reports whether the command or one of its ancestors is in one of the groups.
 func inGroup(c *cobra.Command, groupIDs ...string) bool {
 	for p := c; p != nil; p = p.Parent() {
 		if slices.Contains(groupIDs, p.GroupID) {

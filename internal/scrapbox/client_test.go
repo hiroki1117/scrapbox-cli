@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// newTestClient は handler を API サーバーとする Client を返す。
+// newTestClient returns a Client that uses handler as the API server.
 func newTestClient(t *testing.T, handler http.Handler, opts ...Option) *Client {
 	t.Helper()
 	srv := httptest.NewServer(handler)
@@ -216,13 +216,13 @@ func TestParsePageURL(t *testing.T) {
 	}
 }
 
-// fastRetry はテスト用に待機時間を短くした再試行方針である。
+// fastRetry is a retry policy with short delays for tests.
 var fastRetry = WithRetryPolicy(RetryPolicy{MaxRetries: 2, BaseDelay: time.Millisecond, MaxDelay: 5 * time.Millisecond})
 
 func TestRetry(t *testing.T) {
 	tests := []struct {
 		name         string
-		statuses     []int // 試行ごとに返すステータスコード
+		statuses     []int // status code returned for each attempt
 		wantErr      error
 		wantRequests int
 	}{
