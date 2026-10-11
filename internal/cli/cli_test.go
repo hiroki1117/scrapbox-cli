@@ -127,3 +127,81 @@ func TestErrors(t *testing.T) {
 		})
 	}
 }
+
+// runWithConfig は設定ファイルのパスと標準入力を指定してコマンドを実行する。
+func runWithConfig(t *testing.T, handler http.Handler, cfgPath, stdin string, args ...string) (string, string, error) {
+	t.Helper()
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+	env := map[string]string{config.EnvBaseURL: srv.URL + "/api", config.EnvConfigFile: cfgPath}
+	var out, errOut bytes.Buffer
+	app := &App{
+		IO:     IOStreams{In: strings.NewReader(stdin), Out: &out, ErrOut: &errOut},
+		Getenv: func(k string) string { return env[k] },
+	}
+	cmd := NewRootCmd(app)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return out.String(), errOut.String(), err
+}
+
+func TestAuthLoginStatusLogout(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("x-personal-access-token") == "goodtoken123" {
+			fmt.Fprint(w, `{"isGuest":false,"name":"alice"}`)
+			return
+		}
+		fmt.Fprint(w, `{"isGuest":true}`)
+	})
+
+	if _, _, err := runWithConfig(t, api, cfgPath, "badtoken\n", "auth", "login", "--with-token"); err == nil {
+		t.Fatal("expected verification error for invalid token")
+	}
+	if f, _ := config.ReadFile(cfgPath); !f.Credentials.IsZero() {
+		t.Fatal("invalid token must not be saved")
+	}
+
+	if _, _, err := runWithConfig(t, api, cfgPath, "goodtoken123\n", "auth", "login", "--with-token"); err != nil {
+		t.Fatal(err)
+	}
+	if f, _ := config.ReadFile(cfgPath); f.Credentials.PersonalAccessToken != "goodtoken123" {
+		t.Fatalf("credentials = %+v", f.Credentials)
+	}
+
+	out, _, err := runWithConfig(t, api, cfgPath, "", "auth", "status", "-o", "json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var st authStatus
+	if err := json.Unmarshal([]byte(out), &st); err != nil {
+		t.Fatal(err)
+	}
+	if st.User != "alice" || st.Source != config.SourceFile || strings.Contains(out, "goodtoken123") {
+		t.Errorf("unexpected status (credential must be masked): %s", out)
+	}
+
+	if _, _, err := runWithConfig(t, api, cfgPath, "", "auth", "logout"); err != nil {
+		t.Fatal(err)
+	}
+	if f, _ := config.ReadFile(cfgPath); !f.Credentials.IsZero() {
+		t.Errorf("credentials remain after logout: %+v", f.Credentials)
+	}
+}
+
+func TestConfigSetProject(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+	if _, _, err := runWithConfig(t, pageHandler(t, "/api/pages/cfgproj/T"), cfgPath, "", "config", "set", "project", "cfgproj"); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := runWithConfig(t, pageHandler(t, "/api/pages/cfgproj/T"), cfgPath, "", "page", "get", "T")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "T\nline2\n" {
+		t.Errorf("output = %q", out)
+	}
+	if _, _, err := runWithConfig(t, pageHandler(t, ""), cfgPath, "", "config", "set", "nokey", "v"); err == nil {
+		t.Error("expected error for unknown key")
+	}
+}

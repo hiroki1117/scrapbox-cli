@@ -55,11 +55,22 @@ func (a *App) Printer() *output.Printer {
 	return a.printer
 }
 
-// Client は Scrapbox API クライアントを返す。初回呼び出し時に生成する。
+// Client は設定された認証情報を使う Scrapbox API クライアントを返す。初回呼び出し時に生成する。
 func (a *App) Client() (*scrapbox.Client, error) {
 	if a.client != nil {
 		return a.client, nil
 	}
+	c, err := a.NewClient(a.cfg.Credentials.Authenticator())
+	if err != nil {
+		return nil, err
+	}
+	a.client = c
+	return c, nil
+}
+
+// NewClient は指定した認証方式で Scrapbox API クライアントを生成する。
+// 保存前の認証情報を検証する auth login などで使う。
+func (a *App) NewClient(auth scrapbox.Authenticator) (*scrapbox.Client, error) {
 	// 注入された *http.Client を書き換えないようコピーしてからタイムアウトを設定する。
 	var hc http.Client
 	if a.HTTPClient != nil {
@@ -71,21 +82,16 @@ func (a *App) Client() (*scrapbox.Client, error) {
 	if a.BuildInfo.Version != "" {
 		ua += "/" + a.BuildInfo.Version
 	}
-	c, err := scrapbox.NewClient(
+	return scrapbox.NewClient(
 		scrapbox.WithBaseURL(a.cfg.BaseURL),
 		scrapbox.WithHTTPClient(&hc),
-		scrapbox.WithAuthenticator(a.cfg.Credentials.Authenticator()),
+		scrapbox.WithAuthenticator(auth),
 		scrapbox.WithUserAgent(ua),
 	)
-	if err != nil {
-		return nil, err
-	}
-	a.client = c
-	return c, nil
 }
 
 // errNoProject はプロジェクトが特定できないときのエラーである。
-var errNoProject = fmt.Errorf("project is not specified: use --project or set %s", config.EnvProject)
+var errNoProject = fmt.Errorf("project is not specified: use --project, set %s, or run 'sb config set project <name>'", config.EnvProject)
 
 // Project は対象プロジェクト名を返す。未設定ならエラーにする。
 func (a *App) Project() (string, error) {
@@ -112,7 +118,7 @@ func (a *App) PageRef(arg string) (scrapbox.PageRef, error) {
 func ErrorHint(err error) string {
 	switch {
 	case errors.Is(err, scrapbox.ErrUnauthorized), errors.Is(err, scrapbox.ErrForbidden):
-		return fmt.Sprintf("hint: this request requires authentication (private projects, Smart Context, etc.). set %s (recommended), %s or %s.",
+		return fmt.Sprintf("hint: this request requires authentication (private projects, Smart Context, etc.). run 'sb auth login', or set %s, %s or %s.",
 			config.EnvPersonalToken, config.EnvServiceAccountKey, config.EnvSessionID)
 	case errors.Is(err, scrapbox.ErrNotFound):
 		return "hint: check the project name and page title."

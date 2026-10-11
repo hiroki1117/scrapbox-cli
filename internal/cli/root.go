@@ -27,12 +27,16 @@ func NewRootCmd(app *App) *cobra.Command {
 		Long: `sb is a command line client for Scrapbox (Cosense).
 
 Environment variables:
-  ` + config.EnvProject + `         default project name
+  ` + config.EnvProject + `         default project name (or 'sb config set project <name>')
   ` + config.EnvPersonalToken + `                  Personal Access Token (recommended for private projects)
   ` + config.EnvServiceAccountKey + `  Service Account access key (Business plan)
   ` + config.EnvSessionID + `                  connect.sid cookie value
   ` + config.EnvBaseURL + `             API base URL (default: https://scrapbox.io/api)
-  ` + config.EnvTimeout + `             request timeout (e.g. 30s)`,
+  ` + config.EnvTimeout + `             request timeout (e.g. 30s)
+  ` + config.EnvConfigFile + `                    config file path (default: ~/.config/sb/config.json)
+
+Precedence: flags > environment variables > config file.
+Run 'sb auth login' to save credentials for private projects.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
@@ -54,6 +58,8 @@ Environment variables:
 		newSearchCmd(app),
 		newContextCmd(app),
 		newProjectCmd(app),
+		newAuthCmd(app),
+		newConfigCmd(app),
 		newWhoamiCmd(app),
 		newVersionCmd(app),
 	)
