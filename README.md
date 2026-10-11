@@ -1,12 +1,13 @@
 # scrapbox-cli
 
-`sb` is a command line client for reading [Scrapbox (Cosense)](https://scrapbox.io), written in Go. It currently supports read operations.
+`sb` is a command line client for reading and editing [Scrapbox (Cosense)](https://scrapbox.io), written in Go.
 
 ## Features
 
 - Read page content, page lists, titles, links, related pages, code blocks and tables
 - Full-text search, semantic (vector) search, and search within related pages
 - Export a page and its related pages as LLM-ready text with Smart Context ("Export for AI")
+- Create, append to, edit, rename and delete pages
 - Read private projects with a Personal Access Token, Service Account or cookie
 - Print results as JSON with `-o json` for `jq` and AI agents
 
@@ -46,8 +47,8 @@ sb config set project my-project      # Save as the default in the config file
 
 ### Authentication (private projects)
 
-Public projects need no authentication. Private projects and Smart Context do.
-Three methods are supported.
+Public projects need no authentication. Private projects, Smart Context and writes do.
+Three methods are supported. Writes need a Personal Access Token or Service Account.
 
 | Method | `--type` | Environment variable | Notes |
 |---|---|---|---|
@@ -128,6 +129,17 @@ sb search vector "AI integration"           # Semantic search (titles and links)
 sb search related "Smart Context" API       # Full-text search within related pages (2 hop search)
 sb search related "Smart Context" AI API --or --hops 2
 
+# Write (requires a PAT or Service Account; --dry-run shows the result without writing)
+sb page create "New page" -t "first line"   # Create a page (body from --text, --file or stdin)
+sb page append "Daily log" -t "- done"      # Append lines to the end
+date | sb page append "Daily log"           # Text from stdin
+sb page insert "Page" --after 3 -t "text"   # Insert after line 3 (line numbers from page get -n)
+sb page replace "Page" Scrapobx Scrapbox    # Replace text (must match once; --all for every match)
+sb page delete-lines "Page" 5-7             # Delete lines 5 to 7
+sb page rename "Old" "New" --update-links   # Rename and rewrite links to it
+sb page delete "Old page"                   # Show the page to delete; add --yes to delete
+sb page replace-links "Old" "New"           # Rewrite links across the project
+
 # Smart Context (Export for AI)
 sb context "Smart Context" | pbcopy
 sb context "Smart Context" --hops 2 > context.txt
@@ -172,7 +184,7 @@ Dependencies flow `cmd → cli → (config, output, scrapbox)`. The `scrapbox` p
 - **Add a command**: Define `newXxxCmd(app *App) *cobra.Command` in `internal/cli` and add it to its parent with `AddCommand`. Print with `app.Printer().Print(v, textFunc)` to support `-o json` automatically. Write `Long` (including the output format) and `Example` (`help_test.go` checks this for read and search commands).
 - **Add an auth method**: Implement `scrapbox.Authenticator` and add it to `config.AuthType` and `config.Credentials`.
 - **Add a setting**: Add a field to `config.File` and register it in `configKeys` in `internal/cli/configcmd.go`.
-- **Write operations**: Planned to use WebSocket (Socket.IO), as scrapbox_mcp does.
+- **Add a write operation**: Build `scrapbox.Change`s (`InsertBefore`, `Replace`, `DeleteLine`, `DeletePage`) and pass them to `applyEdit` in `internal/cli/edit.go`, which previews and submits them through `PagesService.PreviewEdit` / `SubmitEdit`.
 
 ### Help
 
@@ -183,6 +195,7 @@ For AI agents, start by having them read `sb --help`.
 
 429 / 502 / 503 / 504 and network errors are retried up to 3 times with exponential backoff (with jitter).
 A `Retry-After` header is honored. Change the count with `--retries` or `SCRAPBOX_MAX_RETRIES`; `0` disables retries.
+Writes are never retried, so a change is never applied twice.
 
 ## Development
 

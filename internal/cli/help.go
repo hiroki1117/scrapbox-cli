@@ -10,16 +10,18 @@ import (
 const (
 	groupRead     = "read"
 	groupSearch   = "search"
+	groupWrite    = "write"
 	groupSettings = "settings"
 )
 
-const rootLong = `sb reads Scrapbox (Cosense) pages from the command line.
+const rootLong = `sb reads and edits Scrapbox (Cosense) pages from the command line.
 
 Quick start:
   sb config set project help-jp     set the default project
   sb page get "Smart Context"       print a page
   sb search text keyword            full-text search
-  sb auth login                     authenticate for private projects
+  sb auth login                     authenticate for private projects and writes
+  sb page append "Log" -t "done"    append a line to a page
 
 Conventions:
   <title|url>  a page title in the current project, or a page URL

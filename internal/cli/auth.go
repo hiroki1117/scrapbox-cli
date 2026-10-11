@@ -16,7 +16,8 @@ import (
 )
 
 func newAuthCmd(app *App) *cobra.Command {
-	cmd := newGroupCmd("auth", "Manage authentication for private projects", `Manage authentication for private projects and Smart Context.
+	cmd := newGroupCmd("auth", "Manage authentication for private projects", `Manage authentication for private projects, Smart Context and writes.
+Writes need a Personal Access Token or Service Account.
 
 Credentials are saved in the config file (permission 0600).
 Environment variables take precedence over it (see 'sb help environment').

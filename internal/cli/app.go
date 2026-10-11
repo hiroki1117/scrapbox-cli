@@ -138,10 +138,12 @@ func (a *App) pageClient(arg string) (scrapbox.PageRef, *scrapbox.Client, error)
 func ErrorHint(err error) string {
 	switch {
 	case errors.Is(err, scrapbox.ErrUnauthorized), errors.Is(err, scrapbox.ErrForbidden):
-		return fmt.Sprintf("hint: this request requires authentication (private projects, Smart Context, etc.). run 'sb auth login', or set %s, %s or %s.",
+		return fmt.Sprintf("hint: this request requires authentication (private projects, Smart Context, writes, etc.). run 'sb auth login', or set %s, %s or %s. writes need a PAT or Service Account.",
 			config.EnvPersonalToken, config.EnvServiceAccountKey, config.EnvSessionID)
 	case errors.Is(err, scrapbox.ErrNotFound):
 		return "hint: check the project name and page title."
+	case errors.Is(err, scrapbox.ErrConflict):
+		return "hint: the page was changed by someone else. run the command again."
 	}
 	return ""
 }

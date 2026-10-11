@@ -13,8 +13,12 @@ import (
 )
 
 func newPageCmd(app *App) *cobra.Command {
-	cmd := newGroupCmd("page", "Read pages (content, list, links, related pages, code blocks)", "")
-	cmd.AddCommand(
+	cmd := newGroupCmd("page", "Read and edit pages", "")
+	cmd.AddGroup(
+		&cobra.Group{ID: groupRead, Title: "Read commands:"},
+		&cobra.Group{ID: groupWrite, Title: "Write commands (require a Personal Access Token or Service Account):"},
+	)
+	addToGroup(cmd, groupRead,
 		newPageGetCmd(app),
 		newPageListCmd(app),
 		newPageTitlesCmd(app),
@@ -22,6 +26,16 @@ func newPageCmd(app *App) *cobra.Command {
 		newPageRelatedCmd(app),
 		newPageCodeCmd(app),
 		newPageTableCmd(app),
+	)
+	addToGroup(cmd, groupWrite,
+		newPageCreateCmd(app),
+		newPageAppendCmd(app),
+		newPageInsertCmd(app),
+		newPageReplaceCmd(app),
+		newPageDeleteLinesCmd(app),
+		newPageRenameCmd(app),
+		newPageDeleteCmd(app),
+		newPageReplaceLinksCmd(app),
 	)
 	return cmd
 }
