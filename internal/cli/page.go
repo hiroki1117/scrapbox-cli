@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -57,10 +58,11 @@ JSON output: {title, lines: [{text, created, updated, ...}], links, descriptions
   sb page get "Smart Context" -o json | jq -r '.lines[].text'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			page, err := fetchPage(cmd, app, args[0])
+			t, err := fetchPage(cmd, app, args[0])
 			if err != nil {
 				return err
 			}
+			page := t.page
 			return app.Printer().Print(page, func(w io.Writer) error {
 				width := len(strconv.Itoa(len(page.Lines)))
 				for i, l := range page.Lines {
@@ -189,10 +191,11 @@ JSON output: ["title", ...]`,
   sb page links "Smart Context" | xargs -I{} sb page get {}`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			page, err := fetchPage(cmd, app, args[0])
+			t, err := fetchPage(cmd, app, args[0])
 			if err != nil {
 				return err
 			}
+			page := t.page
 			return app.Printer().Print(page.Links, func(w io.Writer) error {
 				for _, l := range page.Links {
 					fmt.Fprintln(w, l)
@@ -264,13 +267,31 @@ Output is always CSV (-o is ignored) so it can be redirected to a file.`,
 	}
 }
 
+// pageTarget is a fetched page with the client used to fetch it.
+type pageTarget struct {
+	project string
+	page    *scrapbox.Page
+	client  *scrapbox.Client
+}
+
 // fetchPage fetches the page given as an argument.
-func fetchPage(cmd *cobra.Command, app *App, arg string) (*scrapbox.Page, error) {
+// With authentication the API returns a missing page as an empty page, so it is reported as not found.
+func fetchPage(cmd *cobra.Command, app *App, arg string) (*pageTarget, error) {
 	ref, client, err := app.pageClient(arg)
 	if err != nil {
 		return nil, err
 	}
-	return client.Pages.Get(cmd.Context(), ref.Project, ref.Title)
+	page, err := client.Pages.Get(cmd.Context(), ref.Project, ref.Title)
+	if err == nil && !page.Persistent {
+		err = scrapbox.ErrNotFound
+	}
+	if errors.Is(err, scrapbox.ErrNotFound) {
+		return nil, fmt.Errorf("page %q does not exist in %s: %w", ref.Title, ref.Project, scrapbox.ErrNotFound)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &pageTarget{ref.Project, page, client}, nil
 }
 
 // rawFetcher fetches a file in a page (code block or table) as raw text.

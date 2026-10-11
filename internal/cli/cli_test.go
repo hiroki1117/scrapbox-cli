@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hiroki1117/scrapbox-cli/internal/config"
+	"github.com/hiroki1117/scrapbox-cli/internal/scrapbox"
 )
 
 // runCmd runs a command against a test API server with env, and returns stdout.
@@ -44,7 +46,7 @@ func pageHandler(t *testing.T, wantPath string) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		fmt.Fprint(w, `{"title":"T","lines":[{"text":"T"},{"text":"line2"}],"links":["A","B"]}`)
+		fmt.Fprint(w, `{"title":"T","persistent":true,"lines":[{"text":"T"},{"text":"line2"}],"links":["A","B"]}`)
 	})
 }
 
@@ -244,5 +246,16 @@ func TestSearchCommands(t *testing.T) {
 				t.Errorf("output = %q, want containing %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPageGet_MissingPage(t *testing.T) {
+	// With authentication the API returns a missing page as a non-persistent empty page.
+	api := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"title":"X","persistent":false,"lines":[{"text":"X"}]}`)
+	})
+	_, err := runCmd(t, api, map[string]string{config.EnvProject: "proj"}, "page", "get", "X")
+	if !errors.Is(err, scrapbox.ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
 	}
 }

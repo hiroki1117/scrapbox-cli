@@ -63,33 +63,16 @@ func (in *textInput) lines(app *App, required bool) ([]string, error) {
 	return strings.Split(s, "\n"), nil
 }
 
-// editTarget is an existing page to edit.
-type editTarget struct {
-	project string
-	page    *scrapbox.Page
-	client  *scrapbox.Client
-}
-
-func loadEditTarget(cmd *cobra.Command, app *App, arg string) (*editTarget, error) {
-	ref, client, err := app.pageClient(arg)
-	if err != nil {
-		return nil, err
-	}
-	page, err := client.Pages.Get(cmd.Context(), ref.Project, ref.Title)
-	if err == nil && !page.Persistent {
-		err = scrapbox.ErrNotFound
-	}
+func loadEditTarget(cmd *cobra.Command, app *App, arg string) (*pageTarget, error) {
+	t, err := fetchPage(cmd, app, arg)
 	if errors.Is(err, scrapbox.ErrNotFound) {
-		return nil, fmt.Errorf("page %q does not exist in %s (use 'sb page create')", ref.Title, ref.Project)
+		return nil, fmt.Errorf("%w (use 'sb page create')", err)
 	}
-	if err != nil {
-		return nil, err
-	}
-	return &editTarget{ref.Project, page, client}, nil
+	return t, err
 }
 
 // line returns the 0-based index of line number n (1-based).
-func (t *editTarget) line(n int) (int, error) {
+func (t *pageTarget) line(n int) (int, error) {
 	if n < 1 || n > len(t.page.Lines) {
 		return 0, fmt.Errorf("line %d is out of range (the page has %d lines)", n, len(t.page.Lines))
 	}
@@ -97,14 +80,14 @@ func (t *editTarget) line(n int) (int, error) {
 }
 
 // anchor returns the insert anchor for the position before line index i.
-func (t *editTarget) anchor(i int) string {
+func (t *pageTarget) anchor(i int) string {
 	if i >= len(t.page.Lines) {
 		return scrapbox.End
 	}
 	return t.page.Lines[i].ID
 }
 
-func (t *editTarget) apply(cmd *cobra.Command, app *App, dryRun bool, changes []scrapbox.Change) error {
+func (t *pageTarget) apply(cmd *cobra.Command, app *App, dryRun bool, changes []scrapbox.Change) error {
 	return applyEdit(cmd, app, t.client, t.project, t.page.ID, t.page.Lines, dryRun, changes)
 }
 
