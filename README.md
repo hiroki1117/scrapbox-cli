@@ -130,6 +130,7 @@ sb search related "Smart Context" API       # Full-text search within related pa
 sb search related "Smart Context" AI API --or --hops 2
 
 # Write (requires a PAT or Service Account; --dry-run shows the result without writing)
+# Writes use the same API as the official Cosense CLI, which is not publicly documented and may change.
 sb page create "New page" -t "first line"   # Create a page (body from --text, --file or stdin)
 sb page append "Daily log" -t "- done"      # Append lines to the end
 date | sb page append "Daily log"           # Text from stdin
@@ -181,7 +182,7 @@ Dependencies flow `cmd → cli → (config, output, scrapbox)`. The `scrapbox` p
 ### Extending
 
 - **Add an API**: Add a method to the matching service in `scrapbox` (such as `PagesService`). For a new resource, define `type XxxService service` and register it in `NewClient`. Use `getJSON` / `getText` for the common HTTP handling.
-- **Add a command**: Define `newXxxCmd(app *App) *cobra.Command` in `internal/cli` and add it to its parent with `AddCommand`. Print with `app.Printer().Print(v, textFunc)` to support `-o json` automatically. Write `Long` (including the output format) and `Example` (`help_test.go` checks this for read and search commands).
+- **Add a command**: Define `newXxxCmd(app *App) *cobra.Command` in `internal/cli` and add it to its parent with `AddCommand`. Print with `app.Printer().Print(v, textFunc)` to support `-o json` automatically. Write `Long` (including the output format) and `Example` (`help_test.go` checks this for read, search and write commands).
 - **Add an auth method**: Implement `scrapbox.Authenticator` and add it to `config.AuthType` and `config.Credentials`.
 - **Add a setting**: Add a field to `config.File` and register it in `configKeys` in `internal/cli/configcmd.go`.
 - **Add a write operation**: Build `scrapbox.Change`s (`InsertBefore`, `Replace`, `DeleteLine`, `DeletePage`) and pass them to `applyEdit` in `internal/cli/edit.go`, which previews and submits them through `PagesService.PreviewEdit` / `SubmitEdit`.
