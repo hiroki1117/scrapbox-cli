@@ -193,6 +193,15 @@ Dependencies flow `cmd → cli → (config, output, scrapbox)`. The `scrapbox` p
 `sb --help` covers how to get started and the common rules (argument format, how the project is chosen, output streams, exit codes). Each command's `--help` covers its output format and examples.
 For AI agents, start by having them read `sb --help`.
 
+### Agent skill
+
+[`skills/scrapbox/`](skills/scrapbox/SKILL.md) is an [Agent Skill](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview) that teaches AI agents when to use each command, how to research a topic, and how to edit pages safely.
+To use it with Claude Code, copy or link the directory into your skills directory:
+
+```bash
+ln -s "$PWD/skills/scrapbox" ~/.claude/skills/scrapbox
+```
+
 ### Retries
 
 429 / 502 / 503 / 504 and network errors are retried up to 3 times with exponential backoff (with jitter).
