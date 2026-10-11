@@ -1,16 +1,35 @@
 # scrapbox-cli
 
-Scrapbox (Cosense) を操作する Go 製の CLI `sb`。現在は参照系の操作に対応している。
+Scrapbox (Cosense) をコマンドラインから読む Go 製の CLI `sb`。現在は参照系の操作に対応している。
+
+## できること
+
+- ページの本文・一覧・タイトル・リンク・関連ページ・コードブロック・テーブルを取得する
+- 全文検索、ベクトル検索、関連ページ内の検索を行う
+- Smart Context（Export for AI）で、ページと関連ページを LLM 向けのテキストとして書き出す
+- Private Project を認証付きで読む（Personal Access Token / Service Account / Cookie）
+- `-o json` で結果を JSON で出力し、`jq` や AI エージェントから扱う
 
 ## インストール
 
+| 方法 | 手順 |
+|---|---|
+| バイナリ | [Releases](https://github.com/hiroki1117/scrapbox-cli/releases) から OS に合うアーカイブを取得し、中の `sb` を PATH の通った場所に置く |
+| go install | `go install github.com/hiroki1117/scrapbox-cli/cmd/sb@latest`（Go 1.26 以上） |
+| ソースから | `git clone` 後に `make build`（`bin/sb` を生成） |
+
+バイナリは linux / macOS / Windows の amd64・arm64 向けを用意している。`sb version` でバージョンを確認できる。
+
+## クイックスタート
+
 ```bash
-go install github.com/hiroki1117/scrapbox-cli/cmd/sb@latest
-# またはリポジトリ内で
-make build   # bin/sb を生成
+sb config set project help-jp      # 1. 既定のプロジェクトを設定する
+sb page get "Smart Context"        # 2. ページを読む
+sb search text 検索                # 3. 検索する
+sb auth login                      # Private Project を読む場合は認証する
 ```
 
-Go 1.26 以上が必要である。
+コマンドの一覧は `sb --help`、各コマンドの詳細は `sb <command> --help` で確認できる。
 
 ## 設定
 
@@ -92,7 +111,7 @@ export COSENSE_PROJECT_NAME=help-jp
 sb page get "Smart Context"                 # 本文を出力
 sb page get "Smart Context" -n              # 行番号付き
 sb page get https://scrapbox.io/help-jp/Smart_Context
-sb page list --limit 20 --sort views        # 一覧
+sb page list --limit 20 --sort views        # 一覧 (--skip でずらす)
 sb page list --all -o json                  # 全件をページングして取得
 sb page titles                              # 全タイトル (軽量)
 sb page links "Smart Context"               # ページ内のリンク
@@ -104,9 +123,11 @@ sb page table "Page" members > members.csv  # テーブル (table:members) を C
 # 検索
 sb search text golang cli                   # 全文検索 (AND)
 sb search text --or golang rust             # OR 検索
+sb search text golang --limit 10            # 件数を絞る
 sb search text -- golang -python            # 除外語は -- の後に書く
 sb search vector "AIとの連携"                # ベクトル検索 (タイトルとリンクが対象)
 sb search related "Smart Context" API       # 関連ページを全文検索で絞り込む (2 hop search)
+sb search related "Smart Context" AI API --or --hops 2
 
 # Smart Context (Export for AI)
 sb context "Smart Context" | pbcopy
@@ -116,6 +137,11 @@ sb context "Smart Context" --hops 2 > context.txt
 sb project get [name]
 sb project list                             # 参加プロジェクト (要認証)
 sb whoami
+
+# その他
+sb version
+sb help environment                         # 環境変数と設定の優先順位
+sb completion zsh > "${fpath[1]}/_sb"       # シェル補完 (bash / zsh / fish / powershell)
 ```
 
 ### 出力形式
@@ -184,7 +210,20 @@ GitHub Actions（`.github/workflows/ci.yml`）で push と Pull Request ごと�
 | lint | `gofmt` の差分・`go mod tidy` の差分・`go vet`・golangci-lint |
 | test | ubuntu / macos / windows × Go 1.26（最小）・stable で `go test -race` |
 | vulncheck | govulncheck で依存モジュールと標準ライブラリの既知の脆弱性を検査 |
+| release-check | GoReleaser で全ターゲットをビルドし、リリース設定が壊れていないかを検査（公開はしない） |
 
 依存モジュールと GitHub Actions の更新は Dependabot が週次で Pull Request を作る。
 
 新しいコマンドを追加するときは、`Short` に加えて `Long`（出力形式の説明を含む）と `Example` を書く。参照系・検索系のコマンドでは `help_test.go` がこれを検査する。
+
+### リリース
+
+`v` から始まるタグを push すると、`.github/workflows/release.yml` が GoReleaser（`.goreleaser.yaml`）で各 OS 向けのバイナリとチェックサムを作り、GitHub Releases に公開する。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+make snapshot   # 公開せずに同じ成果物を dist/ に生成して確認する (goreleaser が必要)
+```
+
+バージョンはタグから決まり、`sb version` に埋め込まれる。
