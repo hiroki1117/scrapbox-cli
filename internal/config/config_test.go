@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -67,7 +68,8 @@ func TestWriteFile_Permission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
+	// Windows はパーミッションビットを持たないため検証しない。
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
 		t.Errorf("perm = %o, want 600", perm)
 	}
 	f, err := ReadFile(path)
@@ -85,8 +87,8 @@ func TestFilePath(t *testing.T) {
 		want string
 	}{
 		{map[string]string{EnvConfigFile: "/x/c.json", "HOME": "/h"}, "/x/c.json"},
-		{map[string]string{"XDG_CONFIG_HOME": "/xdg", "HOME": "/h"}, "/xdg/sb/config.json"},
-		{map[string]string{"HOME": "/h"}, "/h/.config/sb/config.json"},
+		{map[string]string{"XDG_CONFIG_HOME": "/xdg", "HOME": "/h"}, filepath.Join("/xdg", "sb", "config.json")},
+		{map[string]string{"HOME": "/h"}, filepath.Join("/h", ".config", "sb", "config.json")},
 	}
 	for _, tt := range tests {
 		got, err := FilePath(envFunc(tt.env))

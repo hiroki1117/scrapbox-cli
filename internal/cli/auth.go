@@ -198,7 +198,7 @@ func newAuthLogoutCmd(app *App) *cobra.Command {
 		Use:   "logout",
 		Short: "Remove credentials from the config file",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			f, err := config.ReadFile(app.cfg.FilePath)
 			if err != nil {
 				return err

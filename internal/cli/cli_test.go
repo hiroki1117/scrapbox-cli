@@ -106,7 +106,7 @@ func TestPageLinks_JSON(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	never := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	never := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		t.Errorf("unexpected request: %s", r.URL)
 	})
 	tests := []struct {

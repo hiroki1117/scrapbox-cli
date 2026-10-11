@@ -38,7 +38,7 @@ func newVersionCmd(app *App) *cobra.Command {
 		Use:   "version",
 		Short: "Print version information",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			bi := app.BuildInfo
 			return app.Printer().Print(bi, func(w io.Writer) error {
 				_, err := fmt.Fprintf(w, "sb %s (commit: %s, built: %s)\n", bi.Version, bi.Commit, bi.Date)

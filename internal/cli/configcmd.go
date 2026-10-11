@@ -60,7 +60,7 @@ func newConfigCmd(app *App) *cobra.Command {
 			Short:   "Print a value in the config file",
 			Args:    cobra.ExactArgs(1),
 			Example: "  sb config get project",
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(_ *cobra.Command, args []string) error {
 				k, err := lookupConfigKey(args[0])
 				if err != nil {
 					return err
@@ -81,7 +81,7 @@ func newConfigCmd(app *App) *cobra.Command {
 			Short:   "Set a value in the config file",
 			Args:    cobra.ExactArgs(2),
 			Example: "  sb config set project my-project",
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(_ *cobra.Command, args []string) error {
 				k, err := lookupConfigKey(args[0])
 				if err != nil {
 					return err
@@ -93,7 +93,7 @@ func newConfigCmd(app *App) *cobra.Command {
 			Use:   "unset <key>",
 			Short: "Remove a value from the config file",
 			Args:  cobra.ExactArgs(1),
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(_ *cobra.Command, args []string) error {
 				k, err := lookupConfigKey(args[0])
 				if err != nil {
 					return err
@@ -105,7 +105,7 @@ func newConfigCmd(app *App) *cobra.Command {
 			Use:   "path",
 			Short: "Print the config file path",
 			Args:  cobra.NoArgs,
-			RunE: func(cmd *cobra.Command, _ []string) error {
+			RunE: func(_ *cobra.Command, _ []string) error {
 				_, err := fmt.Fprintln(app.IO.Out, app.cfg.FilePath)
 				return err
 			},

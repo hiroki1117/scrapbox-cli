@@ -82,7 +82,7 @@ func TestAPIError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(strconv.Itoa(tt.status), func(t *testing.T) {
-			c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tt.status)
 				fmt.Fprint(w, `{"name":"SomeError","message":"boom"}`)
 			}))
