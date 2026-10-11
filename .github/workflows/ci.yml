@@ -46,6 +46,10 @@ jobs:
         # go.mod で宣言している最小バージョンと最新安定版
         go: ['1.23.x', stable]
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # Windows の PowerShell は -coverprofile=coverage.out の引数を分割してしまうため bash に統一する
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
