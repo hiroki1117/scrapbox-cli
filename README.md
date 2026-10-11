@@ -14,22 +14,70 @@ Go 1.23 以上が必要である。
 
 ## 設定
 
-設定は環境変数とグローバルフラグで行う。フラグは環境変数より優先する。
-認証情報はシェル履歴やプロセス一覧に残らないよう、環境変数からのみ読み込む。
+設定はフラグ・環境変数・設定ファイルの 3 か所で行える。優先順位は **フラグ > 環境変数 > 設定ファイル** である。
+
+### プロジェクトの指定
+
+```bash
+sb page list --project my-project     # フラグで指定 (短縮形 -p)
+export COSENSE_PROJECT_NAME=my-project # 環境変数で指定
+sb config set project my-project      # 設定ファイルにデフォルトとして保存
+```
+
+ページ URL を引数に渡した場合は、URL のプロジェクトを使う。
+
+### 認証 (Private Project)
+
+Public Project は認証なしで参照できる。Private Project と Smart Context には認証が必要である。
+次の 3 つの方式に対応している。
+
+| 方式 | `--type` | 環境変数 | 説明 |
+|---|---|---|---|
+| Personal Access Token | `pat` (既定) | `COSENSE_PAT` | 推奨。[ユーザー設定](https://scrapbox.io/settings/personal-access-tokens)で発行する |
+| Service Account | `service-account` | `COSENSE_SERVICE_ACCOUNT_KEY` | Business プラン。1 つのプロジェクトにだけアクセスできる |
+| connect.sid Cookie | `sid` | `COSENSE_SID` | ブラウザでログイン中の Cookie の値 |
+
+認証情報を設定ファイルに保存する場合は `sb auth login` を使う。入力は画面に表示しない。
+
+```bash
+sb auth login                          # PAT をプロンプトで入力
+sb auth login --type sid               # connect.sid を使う
+pbpaste | sb auth login --with-token   # 標準入力から読む
+sb auth status                         # 現在の認証状態 (認証情報はマスク表示)
+sb auth logout                         # 設定ファイルから削除
+```
+
+- `login` は保存前に API へアクセスして認証情報を検証する。検証を省く場合は `--no-verify` を付ける。
+- Service Account はユーザーに紐づかないので、デフォルトプロジェクトへのアクセスで検証する。
+- 認証情報はシェル履歴に残らないよう、コマンドライン引数では受け付けない。
+- 環境変数に認証情報が 1 つでもあれば、設定ファイルの認証情報は使わない。
+- 複数の方式が設定されている場合は PAT > Service Account > connect.sid の順に使う。
+
+### 設定ファイル
+
+既定のパスは `~/.config/sb/config.json` である（`$XDG_CONFIG_HOME/sb/config.json`、または `SB_CONFIG` で変更できる）。
+認証情報を含むので、パーミッション 0600 で作成する。
+
+```bash
+sb config path               # パスを表示
+sb config get project
+sb config set project my-project
+sb config unset project
+```
+
+### 環境変数一覧
 
 | 環境変数 | フラグ | 説明 |
 |---|---|---|
 | `COSENSE_PROJECT_NAME` | `-p, --project` | デフォルトのプロジェクト名 |
-| `COSENSE_PAT` | - | [Personal Access Token](https://scrapbox.io/settings/personal-access-tokens)（推奨） |
-| `COSENSE_SERVICE_ACCOUNT_KEY` | - | Service Account のアクセスキー（Business プラン） |
+| `COSENSE_PAT` | - | Personal Access Token |
+| `COSENSE_SERVICE_ACCOUNT_KEY` | - | Service Account のアクセスキー |
 | `COSENSE_SID` | - | `connect.sid` Cookie の値 |
 | `SCRAPBOX_API_URL` | `--base-url` | API のベース URL（既定: `https://scrapbox.io/api`） |
 | `SCRAPBOX_TIMEOUT` | `--timeout` | リクエストのタイムアウト（既定: `30s`） |
+| `SB_CONFIG` | - | 設定ファイルのパス |
 
-認証情報が複数ある場合は `COSENSE_PAT` > `COSENSE_SERVICE_ACCOUNT_KEY` > `COSENSE_SID` の順に使う。
 `COSENSE_PROJECT_NAME` / `COSENSE_SID` / `SCRAPBOX_API_URL` は [scrapbox_mcp](https://github.com/hiroki1117/scrapbox_mcp) と共通である。
-
-Public Project は認証なしで参照できる。Smart Context はログインが必要である。
 
 ## 使い方
 
@@ -81,7 +129,7 @@ sb search golang -o json | jq -r '.pages[].title'
 cmd/sb/              エントリポイント (シグナル処理、終了コード、エラーヒント)
 internal/
   cli/               cobra のコマンド定義。App が設定・Client・Printer を各コマンドへ渡す
-  config/            環境変数から設定を読み込む
+  config/            設定ファイル・環境変数から設定を読み込む / 設定ファイルの保存
   output/            text / json の出力切り替え、テーブル・時刻の整形
   scrapbox/          REST API クライアント (CLI に依存しない)
     client.go        HTTP 処理の共通部 (リクエスト生成、エラー変換、JSON / テキストの取得)
@@ -99,7 +147,8 @@ internal/
 
 - **API を追加する**: `scrapbox` の該当サービス（`PagesService` など）にメソッドを追加する。新しいリソースなら `type XxxService service` を定義し、`NewClient` で登録する。共通の HTTP 処理は `getJSON` / `getText` を使う。
 - **コマンドを追加する**: `internal/cli` に `newXxxCmd(app *App) *cobra.Command` を定義し、親コマンドの `AddCommand` に加える。出力は `app.Printer().Print(v, textFunc)` を使えば `-o json` に自動で対応する。
-- **認証方式を追加する**: `scrapbox.Authenticator` を実装し、`config.Credentials.Authenticator` で選択する。
+- **認証方式を追加する**: `scrapbox.Authenticator` を実装し、`config.AuthType` と `config.Credentials` に追加する。
+- **設定項目を追加する**: `config.File` にフィールドを追加し、`internal/cli/configcmd.go` の `configKeys` に登録する。
 - **書き込み系**: scrapbox_mcp と同様に WebSocket (Socket.IO) で実装する想定である。`scrapbox` パッケージに追加し、`cli` に `page create` などのサブコマンドを追加する。
 
 ## 開発
