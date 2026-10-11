@@ -1,189 +1,190 @@
 # scrapbox-cli
 
-Scrapbox (Cosense) をコマンドラインから読む Go 製の CLI `sb`。現在は参照系の操作に対応している。
+`sb` is a command line client for reading [Scrapbox (Cosense)](https://scrapbox.io), written in Go. It currently supports read operations.
 
-## できること
+## Features
 
-- ページの本文・一覧・タイトル・リンク・関連ページ・コードブロック・テーブルを取得する
-- 全文検索、ベクトル検索、関連ページ内の検索を行う
-- Smart Context（Export for AI）で、ページと関連ページを LLM 向けのテキストとして書き出す
-- Private Project を認証付きで読む（Personal Access Token / Service Account / Cookie）
-- `-o json` で結果を JSON で出力し、`jq` や AI エージェントから扱う
+- Read page content, page lists, titles, links, related pages, code blocks and tables
+- Full-text search, semantic (vector) search, and search within related pages
+- Export a page and its related pages as LLM-ready text with Smart Context ("Export for AI")
+- Read private projects with a Personal Access Token, Service Account or cookie
+- Print results as JSON with `-o json` for `jq` and AI agents
 
-## インストール
+## Install
 
-| 方法 | 手順 |
+| Method | Steps |
 |---|---|
-| バイナリ | [Releases](https://github.com/hiroki1117/scrapbox-cli/releases) から OS に合うアーカイブを取得し、中の `sb` を PATH の通った場所に置く |
-| go install | `go install github.com/hiroki1117/scrapbox-cli/cmd/sb@latest`（Go 1.27 以上） |
-| ソースから | `git clone` 後に `make build`（`bin/sb` を生成） |
+| Binary | Download the archive for your OS from [Releases](https://github.com/hiroki1117/scrapbox-cli/releases) and put `sb` on your PATH |
+| go install | `go install github.com/hiroki1117/scrapbox-cli/cmd/sb@latest` (Go 1.27+) |
+| From source | `git clone`, then `make build` (creates `bin/sb`) |
 
-バイナリは linux / macOS / Windows の amd64・arm64 向けを用意している。`sb version` でバージョンを確認できる。
+Binaries are available for Linux, macOS and Windows on amd64 and arm64. Run `sb version` to check the version.
 
-## クイックスタート
-
-```bash
-sb config set project help-jp      # 1. 既定のプロジェクトを設定する
-sb page get "Smart Context"        # 2. ページを読む
-sb search text 検索                # 3. 検索する
-sb auth login                      # Private Project を読む場合は認証する
-```
-
-コマンドの一覧は `sb --help`、各コマンドの詳細は `sb <command> --help` で確認できる。
-
-## 設定
-
-設定はフラグ・環境変数・設定ファイルの 3 か所で行える。優先順位は **フラグ > 環境変数 > 設定ファイル** である。
-
-### プロジェクトの指定
+## Quick start
 
 ```bash
-sb page list --project my-project     # フラグで指定 (短縮形 -p)
-export COSENSE_PROJECT_NAME=my-project # 環境変数で指定
-sb config set project my-project      # 設定ファイルにデフォルトとして保存
+sb config set project help-jp      # 1. Set the default project
+sb page get "Smart Context"        # 2. Read a page
+sb search text API                 # 3. Search
+sb auth login                      # Authenticate to read private projects
 ```
 
-### 認証 (Private Project)
+Run `sb --help` for the list of commands and `sb <command> --help` for details.
+The examples use [help-jp](https://scrapbox.io/help-jp), a public project.
 
-Public Project は認証なしで参照できる。Private Project と Smart Context には認証が必要である。
-次の 3 つの方式に対応している。
+## Configuration
 
-| 方式 | `--type` | 環境変数 | 説明 |
+Settings come from flags, environment variables and the config file. The precedence is **flags > environment variables > config file**.
+
+### Project
+
+```bash
+sb page list --project my-project     # Flag (short: -p)
+export COSENSE_PROJECT_NAME=my-project # Environment variable
+sb config set project my-project      # Save as the default in the config file
+```
+
+### Authentication (private projects)
+
+Public projects need no authentication. Private projects and Smart Context do.
+Three methods are supported.
+
+| Method | `--type` | Environment variable | Notes |
 |---|---|---|---|
-| Personal Access Token | `pat` (既定) | `COSENSE_PAT` | 推奨。[ユーザー設定](https://scrapbox.io/settings/personal-access-tokens)で発行する |
-| Service Account | `service-account` | `COSENSE_SERVICE_ACCOUNT_KEY` | Business プラン。1 つのプロジェクトにだけアクセスできる |
-| connect.sid Cookie | `sid` | `COSENSE_SID` | ブラウザでログイン中の Cookie の値 |
+| Personal Access Token | `pat` (default) | `COSENSE_PAT` | Recommended. Issue one in your [settings](https://scrapbox.io/settings/personal-access-tokens) |
+| Service Account | `service-account` | `COSENSE_SERVICE_ACCOUNT_KEY` | Business plan. Accesses a single project |
+| connect.sid cookie | `sid` | `COSENSE_SID` | Cookie value of a logged-in browser |
 
-認証情報を設定ファイルに保存する場合は `sb auth login` を使う。入力は画面に表示しない。
+Use `sb auth login` to save a credential in the config file. The input is hidden.
 
 ```bash
-sb auth login                          # PAT をプロンプトで入力
-sb auth login --type sid               # connect.sid を使う
-pbpaste | sb auth login --with-token   # 標準入力から読む
-sb auth status                         # 現在の認証状態 (認証情報はマスク表示)
-sb auth logout                         # 設定ファイルから削除
+sb auth login                          # Enter a PAT at the prompt
+sb auth login --type sid               # Use connect.sid
+pbpaste | sb auth login --with-token   # Read from stdin
+sb auth status                         # Show the current auth state (credential masked)
+sb auth logout                         # Remove from the config file
 ```
 
-- `login` は保存前に API へアクセスして認証情報を検証する。検証を省く場合は `--no-verify` を付ける。
-- Service Account は、デフォルトプロジェクトへのアクセスで検証する。
-- 認証情報はシェル履歴に残らないよう、コマンドライン引数では受け付けない。
-- 環境変数に認証情報が 1 つでもあれば、設定ファイルの認証情報は使わない。
-- 複数の方式が設定されている場合は PAT > Service Account > connect.sid の順に使う。
+- `login` verifies the credential against the API before saving. Use `--no-verify` to skip this.
+- A Service Account is verified against the default project.
+- Credentials are never accepted as command line arguments, to keep them out of shell history.
+- If any credential is set in environment variables, credentials in the config file are ignored.
+- If several methods are set, PAT > Service Account > connect.sid is used.
 
-### 設定ファイル
+### Config file
 
-既定のパスは `~/.config/sb/config.json` である（`$XDG_CONFIG_HOME/sb/config.json`、または `SB_CONFIG` で変更できる）。
-認証情報を含むので、パーミッション 0600 で作成する。
+The default path is `~/.config/sb/config.json` (change it with `$XDG_CONFIG_HOME/sb/config.json` or `SB_CONFIG`).
+It contains credentials, so it is created with permission 0600.
 
 ```bash
-sb config path               # パスを表示
+sb config path               # Print the path
 sb config get project
 sb config set project my-project
 sb config unset project
 ```
 
-### 環境変数一覧
+### Environment variables
 
-| 環境変数 | フラグ | 説明 |
+| Variable | Flag | Description |
 |---|---|---|
-| `COSENSE_PROJECT_NAME` | `-p, --project` | デフォルトのプロジェクト名 |
+| `COSENSE_PROJECT_NAME` | `-p, --project` | Default project name |
 | `COSENSE_PAT` | - | Personal Access Token |
-| `COSENSE_SERVICE_ACCOUNT_KEY` | - | Service Account のアクセスキー |
-| `COSENSE_SID` | - | `connect.sid` Cookie の値 |
-| `SCRAPBOX_API_URL` | `--base-url` | API のベース URL（既定: `https://scrapbox.io/api`） |
-| `SCRAPBOX_TIMEOUT` | `--timeout` | リクエストのタイムアウト（既定: `30s`） |
-| `SCRAPBOX_MAX_RETRIES` | `--retries` | 一時的なエラー時の再試行回数（既定: `3`） |
-| `SB_CONFIG` | - | 設定ファイルのパス |
+| `COSENSE_SERVICE_ACCOUNT_KEY` | - | Service Account access key |
+| `COSENSE_SID` | - | `connect.sid` cookie value |
+| `SCRAPBOX_API_URL` | `--base-url` | API base URL (default: `https://scrapbox.io/api`) |
+| `SCRAPBOX_TIMEOUT` | `--timeout` | Request timeout (default: `30s`) |
+| `SCRAPBOX_MAX_RETRIES` | `--retries` | Retries on transient errors (default: `3`) |
+| `SB_CONFIG` | - | Config file path |
 
-`COSENSE_PROJECT_NAME` / `COSENSE_SID` / `SCRAPBOX_API_URL` は [scrapbox_mcp](https://github.com/hiroki1117/scrapbox_mcp) と共通である。
+`COSENSE_PROJECT_NAME`, `COSENSE_SID` and `SCRAPBOX_API_URL` are shared with [scrapbox_mcp](https://github.com/hiroki1117/scrapbox_mcp).
 
-## 使い方
+## Usage
 
-ページを受け取るコマンドは、タイトルの代わりにページ URL（`https://scrapbox.io/<project>/<title>`）も受け付ける。
-URL を渡した場合は URL のプロジェクトを使う。
+Commands that take a page also accept a page URL (`https://scrapbox.io/<project>/<title>`) instead of a title.
+With a URL, the project in the URL is used.
 
 ```bash
 export COSENSE_PROJECT_NAME=help-jp
 
-# ページ
-sb page get "Smart Context"                 # 本文を出力
-sb page get "Smart Context" -n              # 行番号付き
+# Pages
+sb page get "Smart Context"                 # Print the content
+sb page get "Smart Context" -n              # With line numbers
 sb page get https://scrapbox.io/help-jp/Smart_Context
-sb page list --limit 20 --sort views        # 一覧 (--skip でずらす)
-sb page list --all -o json                  # 全件をページングして取得
-sb page titles                              # 全タイトル (軽量)
-sb page links "Smart Context"               # ページ内のリンク
-sb page related "Smart Context"             # 関連ページリスト (1hop)
-sb page related "Smart Context" --hops 2    # 2hop のページ
-sb page code "Page" main.go > main.go       # コードブロック (code:main.go)
-sb page table "Page" members > members.csv  # テーブル (table:members) を CSV で
+sb page list --limit 20 --sort views        # List pages (--skip to offset)
+sb page list --all -o json                  # Fetch all pages, paging automatically
+sb page titles                              # All titles (lightweight)
+sb page links "Smart Context"               # Links in the page
+sb page related "Smart Context"             # Related pages (1-hop)
+sb page related "Smart Context" --hops 2    # 2-hop pages
+sb page code "Page" main.go > main.go       # Code block (code:main.go)
+sb page table "Page" members > members.csv  # Table (table:members) as CSV
 
-# 検索
-sb search text golang cli                   # 全文検索 (AND)
-sb search text --or golang rust             # OR 検索
-sb search text golang --limit 10            # 件数を絞る
-sb search text -- golang -python            # 除外語は -- の後に書く
-sb search vector "AIとの連携"                # ベクトル検索 (タイトルとリンクが対象)
-sb search related "Smart Context" API       # 関連ページを全文検索で絞り込む (2 hop search)
+# Search
+sb search text golang cli                   # Full-text search (AND)
+sb search text --or golang rust             # OR search
+sb search text golang --limit 10            # Limit the results
+sb search text -- golang -python            # Put excluded words after --
+sb search vector "AI integration"           # Semantic search (titles and links)
+sb search related "Smart Context" API       # Full-text search within related pages (2 hop search)
 sb search related "Smart Context" AI API --or --hops 2
 
 # Smart Context (Export for AI)
 sb context "Smart Context" | pbcopy
 sb context "Smart Context" --hops 2 > context.txt
 
-# プロジェクト・ユーザー
+# Projects and users
 sb project get [name]
-sb project list                             # 参加プロジェクト (要認証)
+sb project list                             # Projects you belong to (requires auth)
 sb whoami
 
-# その他
+# Other
 sb version
-sb help environment                         # 環境変数と設定の優先順位
-sb completion zsh > "${fpath[1]}/_sb"       # シェル補完 (bash / zsh / fish / powershell)
+sb help environment                         # Environment variables and precedence
+sb completion zsh > "${fpath[1]}/_sb"       # Shell completion (bash / zsh / fish / powershell)
 ```
 
-### 出力形式
+### Output format
 
-`-o json` を付けると API のレスポンス構造を保った JSON を出力する。`jq` との併用を想定している。
+`-o json` prints JSON that keeps the API response structure. It is meant to be used with `jq`.
 
 ```bash
 sb search text golang -o json | jq -r '.pages[].title'
 ```
 
-`page code` / `page table` は、リダイレクトでファイル保存する用途を想定し、`-o` に関わらず生テキストを出力する。
+`page code` and `page table` always print raw text regardless of `-o`, so they can be redirected to files.
 
-## 設計
+## Design
 
 ```
-cmd/sb/            エントリポイント (シグナル処理、終了コード、エラーヒント)
+cmd/sb/            Entry point (signals, exit code, error hints)
 internal/
-  cli/             cobra のコマンド定義。App が設定・Client・Printer を各コマンドへ渡す
-  config/          設定ファイル・環境変数の読み込みと設定ファイルの保存
-  output/          text / json の出力切り替え、テーブル・時刻の整形
-  scrapbox/        REST API クライアント (認証、リトライ、エラー変換、各 API)
+  cli/             cobra commands. App passes the config, Client and Printer to each command
+  config/          Loads the config file and environment variables; saves the config file
+  output/          Text / JSON output, table and time formatting
+  scrapbox/        REST API client (auth, retries, error conversion, APIs)
 ```
 
-依存の向きは `cmd → cli → (config, output, scrapbox)` で、`scrapbox` パッケージは他のどのパッケージにも依存しない。
+Dependencies flow `cmd → cli → (config, output, scrapbox)`. The `scrapbox` package depends on no other package in this module.
 
-### 拡張方法
+### Extending
 
-- **API を追加する**: `scrapbox` の該当サービス（`PagesService` など）にメソッドを追加する。新しいリソースなら `type XxxService service` を定義し、`NewClient` で登録する。共通の HTTP 処理は `getJSON` / `getText` を使う。
-- **コマンドを追加する**: `internal/cli` に `newXxxCmd(app *App) *cobra.Command` を定義し、親コマンドの `AddCommand` に加える。出力は `app.Printer().Print(v, textFunc)` を使えば `-o json` に自動で対応する。ヘルプには `Long`（出力形式の説明を含む）と `Example` を書く（参照系・検索系は `help_test.go` が検査する）。
-- **認証方式を追加する**: `scrapbox.Authenticator` を実装し、`config.AuthType` と `config.Credentials` に追加する。
-- **設定項目を追加する**: `config.File` にフィールドを追加し、`internal/cli/configcmd.go` の `configKeys` に登録する。
-- **書き込み系**: scrapbox_mcp と同様に WebSocket (Socket.IO) で実装する想定である。
+- **Add an API**: Add a method to the matching service in `scrapbox` (such as `PagesService`). For a new resource, define `type XxxService service` and register it in `NewClient`. Use `getJSON` / `getText` for the common HTTP handling.
+- **Add a command**: Define `newXxxCmd(app *App) *cobra.Command` in `internal/cli` and add it to its parent with `AddCommand`. Print with `app.Printer().Print(v, textFunc)` to support `-o json` automatically. Write `Long` (including the output format) and `Example` (`help_test.go` checks this for read and search commands).
+- **Add an auth method**: Implement `scrapbox.Authenticator` and add it to `config.AuthType` and `config.Credentials`.
+- **Add a setting**: Add a field to `config.File` and register it in `configKeys` in `internal/cli/configcmd.go`.
+- **Write operations**: Planned to use WebSocket (Socket.IO), as scrapbox_mcp does.
 
-### ヘルプ
+### Help
 
-`sb --help` に使い始め方と共通ルール（引数の形式、プロジェクトの決まり方、出力先、終了コード）を、各コマンドの `--help` に出力形式と使用例をまとめている。
-AI エージェントから使う場合も、まず `sb --help` を読ませればよい。
+`sb --help` covers how to get started and the common rules (argument format, how the project is chosen, output streams, exit codes). Each command's `--help` covers its output format and examples.
+For AI agents, start by having them read `sb --help`.
 
-### リトライ
+### Retries
 
-429 / 502 / 503 / 504 とネットワークエラーは、指数バックオフ（ジッター付き）で最大 3 回再試行する。
-`Retry-After` ヘッダがあればそれに従う。回数は `--retries` または `SCRAPBOX_MAX_RETRIES` で変更でき、`0` で無効になる。
+429 / 502 / 503 / 504 and network errors are retried up to 3 times with exponential backoff (with jitter).
+A `Retry-After` header is honored. Change the count with `--retries` or `SCRAPBOX_MAX_RETRIES`; `0` disables retries.
 
-## 開発
+## Development
 
 ```bash
 make test
@@ -193,23 +194,23 @@ make build
 
 ### CI
 
-GitHub Actions（`.github/workflows/ci.yml`）で push と Pull Request ごとに次を実行する。
+GitHub Actions (`.github/workflows/ci.yml`) runs the following on every push and pull request.
 
-| ジョブ | 内容 |
+| Job | What it does |
 |---|---|
-| lint | `gofmt` の差分・`go mod tidy` の差分・`go vet`・golangci-lint |
-| test | ubuntu / macos / windows × Go 1.27（最小）・stable で `go test -race` |
-| vulncheck | govulncheck で依存モジュールと標準ライブラリの既知の脆弱性を検査 |
-| release-check | GoReleaser で全ターゲットをビルドし、リリース設定が壊れていないかを検査（公開はしない） |
+| lint | `gofmt` diff, `go mod tidy` diff, `go vet`, golangci-lint |
+| test | `go test -race` on ubuntu / macos / windows × Go 1.27 (minimum) and stable |
+| vulncheck | govulncheck checks dependencies and the standard library for known vulnerabilities |
+| release-check | GoReleaser builds all targets to verify the release config (nothing is published) |
 
-依存モジュールと GitHub Actions の更新は Dependabot が週次で Pull Request を作る。
+Dependabot opens weekly pull requests to update Go modules and GitHub Actions.
 
-### リリース
+### Release
 
-`v` から始まるタグを push すると、`.github/workflows/release.yml` が GoReleaser（`.goreleaser.yaml`）で各 OS 向けのバイナリとチェックサムを作り、GitHub Releases に公開する。
+Pushing a tag starting with `v` runs `.github/workflows/release.yml`, which uses GoReleaser (`.goreleaser.yaml`) to build binaries and checksums for each OS and publish them to GitHub Releases.
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
-make snapshot   # 公開せずに同じ成果物を dist/ に生成して確認する (goreleaser が必要)
+make snapshot   # Build the same artifacts into dist/ without publishing (requires goreleaser)
 ```
