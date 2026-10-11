@@ -3,7 +3,7 @@ COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)
 
-.PHONY: build install test vet fmt
+.PHONY: build install test vet fmt snapshot
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/sb ./cmd/sb
@@ -19,3 +19,7 @@ vet:
 
 fmt:
 	gofmt -w .
+
+# リリースと同じ成果物を dist/ に生成する (公開はしない)。goreleaser が必要。
+snapshot:
+	goreleaser release --snapshot --clean
