@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ type globalFlags struct {
 	output  string
 	baseURL string
 	timeout time.Duration
+	retries int
 }
 
 // NewRootCmd はルートコマンドを生成する。
@@ -52,6 +54,7 @@ Run 'sb auth login' to save credentials for private projects.`,
 	pf.StringVarP(&gf.output, "output", "o", string(output.Text), "output format: text|json")
 	pf.StringVar(&gf.baseURL, "base-url", "", "API base URL (env: "+config.EnvBaseURL+")")
 	pf.DurationVar(&gf.timeout, "timeout", 0, "request timeout (env: "+config.EnvTimeout+")")
+	pf.IntVar(&gf.retries, "retries", 0, "max retries on 429/5xx/network errors (default 3, env: "+config.EnvMaxRetries+")")
 
 	cmd.AddCommand(
 		newPageCmd(app),
@@ -81,6 +84,12 @@ func (a *App) init(cmd *cobra.Command, gf globalFlags) error {
 	}
 	if flags.Changed("timeout") {
 		cfg.Timeout = gf.timeout
+	}
+	if flags.Changed("retries") {
+		if gf.retries < 0 {
+			return fmt.Errorf("--retries must not be negative")
+		}
+		cfg.MaxRetries = gf.retries
 	}
 
 	format, err := output.ParseFormat(gf.output)

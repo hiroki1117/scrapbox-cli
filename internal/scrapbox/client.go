@@ -30,6 +30,7 @@ type Client struct {
 	httpClient *http.Client
 	auth       Authenticator
 	userAgent  string
+	retry      RetryPolicy
 
 	Pages        *PagesService
 	Projects     *ProjectsService
@@ -91,6 +92,7 @@ func NewClient(opts ...Option) (*Client, error) {
 		httpClient: &http.Client{Timeout: DefaultTimeout},
 		auth:       NoAuth{},
 		userAgent:  defaultUserAgent,
+		retry:      DefaultRetryPolicy,
 	}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
@@ -122,17 +124,31 @@ func (c *Client) newRequest(ctx context.Context, path string, query url.Values) 
 }
 
 // do はリクエストを送り、2xx 以外のレスポンスを *APIError に変換する。
-// 成功時は呼び出し側が resp.Body を閉じる責務を持つ。
+// 一時的な失敗は RetryPolicy に従って再試行する。成功時は呼び出し側が resp.Body を閉じる責務を持つ。
+// リクエストはボディを持たない GET のみを想定しているため、同じ *http.Request を再送できる。
 func (c *Client) do(req *http.Request) (*http.Response, error) {
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%s %s: %w", req.Method, req.URL.Redacted(), err)
+	for attempt := 0; ; attempt++ {
+		resp, err := c.httpClient.Do(req)
+		canRetry := attempt < c.retry.MaxRetries && req.Context().Err() == nil
+		if err != nil {
+			if !canRetry {
+				return nil, fmt.Errorf("%s %s: %w", req.Method, req.URL.Redacted(), err)
+			}
+		} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp, nil
+		} else if !canRetry || !retryable(resp.StatusCode) {
+			defer resp.Body.Close()
+			return nil, newAPIError(req, resp)
+		}
+
+		wait := c.retry.delay(attempt, resp)
+		if resp != nil {
+			discard(resp)
+		}
+		if err := sleep(req.Context(), wait); err != nil {
+			return nil, fmt.Errorf("%s %s: %w", req.Method, req.URL.Redacted(), err)
+		}
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		defer resp.Body.Close()
-		return nil, newAPIError(req, resp)
-	}
-	return resp, nil
 }
 
 // getJSON は GET リクエストを送り、レスポンスボディを v にデコードする。

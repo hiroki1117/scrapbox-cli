@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // newTestClient は handler を API サーバーとする Client を返す。
@@ -212,5 +213,81 @@ func TestParsePageURL(t *testing.T) {
 				t.Errorf("got %+v, want %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+// fastRetry はテスト用に待機時間を短くした再試行方針である。
+var fastRetry = WithRetryPolicy(RetryPolicy{MaxRetries: 2, BaseDelay: time.Millisecond, MaxDelay: 5 * time.Millisecond})
+
+func TestRetry(t *testing.T) {
+	tests := []struct {
+		name         string
+		statuses     []int // 試行ごとに返すステータスコード
+		wantErr      error
+		wantRequests int
+	}{
+		{"recovers from 503", []int{503, 200}, nil, 2},
+		{"honors 429", []int{429, 429, 200}, nil, 3},
+		{"gives up after max retries", []int{502, 502, 502, 200}, nil, 3},
+		{"does not retry 404", []int{404, 200}, ErrNotFound, 1},
+		{"does not retry 500", []int{500, 200}, nil, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests int
+			c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				status := tt.statuses[requests]
+				requests++
+				if status == http.StatusTooManyRequests {
+					w.Header().Set("Retry-After", "0")
+				}
+				w.WriteHeader(status)
+				fmt.Fprint(w, `{"name":"x"}`)
+			}), fastRetry)
+
+			_, err := c.Projects.Get(context.Background(), "proj")
+			if requests != tt.wantRequests {
+				t.Errorf("requests = %d, want %d", requests, tt.wantRequests)
+			}
+			succeeded := tt.statuses[tt.wantRequests-1] == http.StatusOK
+			switch {
+			case tt.wantErr != nil && !errors.Is(err, tt.wantErr):
+				t.Errorf("err = %v, want %v", err, tt.wantErr)
+			case succeeded && err != nil:
+				t.Errorf("unexpected error: %v", err)
+			case !succeeded && err == nil:
+				t.Error("expected error")
+			}
+		})
+	}
+}
+
+func TestRetry_StopsOnContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var requests int
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		cancel()
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}), WithRetryPolicy(RetryPolicy{MaxRetries: 5, BaseDelay: time.Second, MaxDelay: time.Second}))
+
+	if _, err := c.Projects.Get(ctx, "proj"); err == nil {
+		t.Fatal("expected error")
+	}
+	if requests != 1 {
+		t.Errorf("requests = %d, want 1", requests)
+	}
+}
+
+func TestParseRetryAfter(t *testing.T) {
+	if d, ok := parseRetryAfter("3"); !ok || d != 3*time.Second {
+		t.Errorf("seconds: %v %v", d, ok)
+	}
+	future := time.Now().Add(time.Hour).UTC().Format(http.TimeFormat)
+	if d, ok := parseRetryAfter(future); !ok || d <= 0 {
+		t.Errorf("http date: %v %v", d, ok)
+	}
+	if _, ok := parseRetryAfter("soon"); ok {
+		t.Error("invalid value must be rejected")
 	}
 }

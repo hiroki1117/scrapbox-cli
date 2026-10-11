@@ -82,8 +82,11 @@ func (a *App) NewClient(auth scrapbox.Authenticator) (*scrapbox.Client, error) {
 	if a.BuildInfo.Version != "" {
 		ua += "/" + a.BuildInfo.Version
 	}
+	retry := scrapbox.DefaultRetryPolicy
+	retry.MaxRetries = a.cfg.MaxRetries
 	return scrapbox.NewClient(
 		scrapbox.WithBaseURL(a.cfg.BaseURL),
+		scrapbox.WithRetryPolicy(retry),
 		scrapbox.WithHTTPClient(&hc),
 		scrapbox.WithAuthenticator(auth),
 		scrapbox.WithUserAgent(ua),

@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/hiroki1117/scrapbox-cli/internal/scrapbox"
@@ -17,6 +18,7 @@ const (
 	EnvSessionID         = "COSENSE_SID"
 	EnvBaseURL           = "SCRAPBOX_API_URL"
 	EnvTimeout           = "SCRAPBOX_TIMEOUT"
+	EnvMaxRetries        = "SCRAPBOX_MAX_RETRIES"
 	// EnvConfigFile は設定ファイルのパスを上書きする。
 	EnvConfigFile = "SB_CONFIG"
 )
@@ -36,6 +38,8 @@ type Config struct {
 	Project string
 	BaseURL string
 	Timeout time.Duration
+	// MaxRetries は一時的な失敗 (429 / 5xx / ネットワークエラー) を再試行する最大回数である。
+	MaxRetries int
 	// Credentials は認証情報である。シェル履歴に残らないよう、フラグでは受け付けない。
 	Credentials Credentials
 	// CredentialSource は Credentials の取得元である。
@@ -129,10 +133,11 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg := Config{
-		Project:  file.Project,
-		BaseURL:  scrapbox.DefaultBaseURL,
-		Timeout:  scrapbox.DefaultTimeout,
-		FilePath: path,
+		Project:    file.Project,
+		BaseURL:    scrapbox.DefaultBaseURL,
+		Timeout:    scrapbox.DefaultTimeout,
+		MaxRetries: scrapbox.DefaultRetryPolicy.MaxRetries,
+		FilePath:   path,
 	}
 	if !file.Credentials.IsZero() {
 		cfg.Credentials, cfg.CredentialSource = file.Credentials, SourceFile
@@ -159,6 +164,13 @@ func Load(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("invalid %s %q: %w", EnvTimeout, v, err)
 		}
 		cfg.Timeout = d
+	}
+	if v := getenv(EnvMaxRetries); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			return Config{}, fmt.Errorf("invalid %s %q: must be a non-negative integer", EnvMaxRetries, v)
+		}
+		cfg.MaxRetries = n
 	}
 	return cfg, nil
 }
