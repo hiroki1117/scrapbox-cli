@@ -5,6 +5,7 @@
 package scrapbox
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -108,15 +109,27 @@ func NewClient(opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// newRequest builds a GET request for an API path (escaped, without a leading "/").
-func (c *Client) newRequest(ctx context.Context, path string, query url.Values) (*http.Request, error) {
+// newRequest builds a request for an API path (escaped, without a leading "/").
+// A non-nil body is sent as JSON.
+func (c *Client) newRequest(ctx context.Context, method, path string, query url.Values, body any) (*http.Request, error) {
 	u := c.baseURL + "/" + path
 	if len(query) > 0 {
 		u += "?" + query.Encode()
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	var r io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		r = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, u, r)
 	if err != nil {
 		return nil, err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("User-Agent", c.userAgent)
 	c.auth.Apply(req)
@@ -124,12 +137,16 @@ func (c *Client) newRequest(ctx context.Context, path string, query url.Values) 
 }
 
 // do sends req and converts non-2xx responses to *APIError.
-// Transient failures are retried by the RetryPolicy. On success, the caller must close resp.Body.
-// Requests are body-less GETs, so the same *http.Request can be resent.
+// Transient failures of GET requests are retried by the RetryPolicy; writes are never retried
+// because resending them may apply the change twice. On success, the caller must close resp.Body.
 func (c *Client) do(req *http.Request) (*http.Response, error) {
+	maxRetries := c.retry.MaxRetries
+	if req.Method != http.MethodGet {
+		maxRetries = 0
+	}
 	for attempt := 0; ; attempt++ {
 		resp, err := c.httpClient.Do(req)
-		canRetry := attempt < c.retry.MaxRetries && req.Context().Err() == nil
+		canRetry := attempt < maxRetries && req.Context().Err() == nil
 		if err != nil {
 			if !canRetry {
 				return nil, fmt.Errorf("%s %s: %w", req.Method, req.URL.Redacted(), err)
@@ -154,7 +171,17 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 // getJSON sends a GET request and decodes the response body into v.
 // It returns the response header for callers that need it, e.g. for paging.
 func (c *Client) getJSON(ctx context.Context, path string, query url.Values, v any) (http.Header, error) {
-	req, err := c.newRequest(ctx, path, query)
+	return c.doJSON(ctx, http.MethodGet, path, query, nil, v)
+}
+
+// postJSON sends body as JSON in a POST request and decodes the response body into v.
+func (c *Client) postJSON(ctx context.Context, path string, body, v any) error {
+	_, err := c.doJSON(ctx, http.MethodPost, path, nil, body, v)
+	return err
+}
+
+func (c *Client) doJSON(ctx context.Context, method, path string, query url.Values, body, v any) (http.Header, error) {
+	req, err := c.newRequest(ctx, method, path, query, body)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +199,7 @@ func (c *Client) getJSON(ctx context.Context, path string, query url.Values, v a
 
 // getText sends a GET request and returns the response body as a string.
 func (c *Client) getText(ctx context.Context, path string, query url.Values) (string, error) {
-	req, err := c.newRequest(ctx, path, query)
+	req, err := c.newRequest(ctx, http.MethodGet, path, query, nil)
 	if err != nil {
 		return "", err
 	}

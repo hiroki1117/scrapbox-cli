@@ -51,3 +51,8 @@ func ParsePageURL(raw string) (PageRef, error) {
 func IsURL(s string) bool {
 	return strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://")
 }
+
+// PageURL returns the browser URL of a page, derived from the API base URL.
+func (c *Client) PageURL(project, title string) string {
+	return strings.TrimSuffix(c.baseURL, "/api") + "/" + escapeSegment(project) + "/" + escapeTitle(title)
+}

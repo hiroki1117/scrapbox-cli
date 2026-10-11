@@ -1,6 +1,7 @@
 package scrapbox
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,8 @@ var (
 	ErrUnauthorized = errors.New("unauthorized")
 	ErrForbidden    = errors.New("forbidden")
 	ErrNotFound     = errors.New("not found")
+	// ErrConflict means the page was changed by someone else after it was read.
+	ErrConflict = errors.New("conflict")
 )
 
 // APIError is returned when the API responds with a non-2xx status.
@@ -21,6 +24,7 @@ type APIError struct {
 	Method     string
 	URL        string
 	// Name and Message come from the Scrapbox error response {"name": "...", "message": "..."}.
+	// Write APIs return {"error": "..."} instead, which is stored in Name.
 	Name    string
 	Message string
 }
@@ -45,6 +49,8 @@ func (e *APIError) Is(target error) bool {
 		return e.StatusCode == http.StatusForbidden
 	case ErrNotFound:
 		return e.StatusCode == http.StatusNotFound
+	case ErrConflict:
+		return e.StatusCode == http.StatusConflict
 	}
 	return false
 }
@@ -65,9 +71,10 @@ func newAPIError(req *http.Request, resp *http.Response) *APIError {
 	var payload struct {
 		Name    string `json:"name"`
 		Message string `json:"message"`
+		Error   string `json:"error"`
 	}
 	if json.Unmarshal(body, &payload) == nil {
-		e.Name, e.Message = payload.Name, payload.Message
+		e.Name, e.Message = cmp.Or(payload.Name, payload.Error), payload.Message
 	}
 	return e
 }
