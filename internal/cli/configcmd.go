@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"maps"
 	"slices"
 	"strings"
 
@@ -27,14 +28,7 @@ var configKeys = map[string]configKey{
 	},
 }
 
-func configKeyNames() []string {
-	names := make([]string, 0, len(configKeys))
-	for k := range configKeys {
-		names = append(names, k)
-	}
-	slices.Sort(names)
-	return names
-}
+func configKeyNames() []string { return slices.Sorted(maps.Keys(configKeys)) }
 
 func lookupConfigKey(name string) (configKey, error) {
 	k, ok := configKeys[name]

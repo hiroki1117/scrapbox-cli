@@ -1,5 +1,25 @@
 package scrapbox
 
+import "fmt"
+
+// Hops は関連ページの範囲である。関連ページリストと Smart Context で使う。
+type Hops int
+
+const (
+	// OneHop は起点ページとリンクでつながるページである。
+	OneHop Hops = 1
+	// TwoHop は 1 hop のページとリンクを共有するページである。
+	TwoHop Hops = 2
+)
+
+// Validate は Hops が API で扱える値かを検証する。
+func (h Hops) Validate() error {
+	if h != OneHop && h != TwoHop {
+		return fmt.Errorf("hops must be 1 or 2, got %d", h)
+	}
+	return nil
+}
+
 // UserRef はページなどに埋め込まれるユーザー参照である。
 type UserRef struct {
 	ID string `json:"id"`
@@ -188,7 +208,8 @@ type RelatedResult struct {
 
 // Pagination は関連ページリストのページング情報である。
 type Pagination struct {
-	PerPage int    `json:"perPage"`
+	PerPage int `json:"perPage"`
+	// Total は検索語で絞り込む前の関連ページ数である。
 	Total   int    `json:"total"`
 	HasNext bool   `json:"hasNext"`
 	NextID  string `json:"nextId,omitempty"`

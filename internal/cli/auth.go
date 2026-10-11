@@ -19,14 +19,12 @@ func newAuthCmd(app *App) *cobra.Command {
 	cmd := newGroupCmd("auth", "Manage authentication for private projects", `Manage authentication for private projects and Smart Context.
 
 Credentials are saved in the config file (permission 0600).
-Credentials in environment variables take precedence over the config file.
+Environment variables take precedence over it (see 'sb help environment').
 
-Supported auth types:
+Auth types:
   pat              Personal Access Token (recommended). Issue at https://scrapbox.io/settings/personal-access-tokens
   service-account  Service Account access key (Business plan, single project)
-  sid              connect.sid cookie value of a logged-in browser
-
-Credentials can also be given by environment variables (see 'sb help environment').`)
+  sid              connect.sid cookie value of a logged-in browser`)
 	cmd.AddCommand(newAuthLoginCmd(app), newAuthStatusCmd(app), newAuthLogoutCmd(app))
 	return cmd
 }

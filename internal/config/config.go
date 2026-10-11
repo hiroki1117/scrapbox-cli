@@ -1,5 +1,5 @@
 // Package config は CLI の設定を設定ファイルと環境変数から読み込む。
-// 優先順位は フラグ > 環境変数 > 設定ファイル > デフォルト値 である。フラグによる上書きは cli パッケージが行う。
+// 優先順位はフラグ > 環境変数 > 設定ファイル > デフォルト値である。フラグによる上書きは cli パッケージが行う。
 package config
 
 import (
@@ -57,17 +57,16 @@ const (
 	AuthSessionID           AuthType = "sid"
 )
 
-// AuthTypes は指定可能な認証方式の一覧である。
-var AuthTypes = []AuthType{AuthPersonalAccessToken, AuthServiceAccount, AuthSessionID}
+var authTypes = []AuthType{AuthPersonalAccessToken, AuthServiceAccount, AuthSessionID}
 
 // ParseAuthType は文字列を AuthType に変換する。
 func ParseAuthType(s string) (AuthType, error) {
-	for _, t := range AuthTypes {
+	for _, t := range authTypes {
 		if AuthType(s) == t {
 			return t, nil
 		}
 	}
-	return "", fmt.Errorf("unknown auth type %q (available: %v)", s, AuthTypes)
+	return "", fmt.Errorf("unknown auth type %q (available: %v)", s, authTypes)
 }
 
 // Credentials は認証情報である。複数設定されている場合は
@@ -121,7 +120,7 @@ func NewCredentials(typ AuthType, value string) Credentials {
 	return Credentials{}
 }
 
-// Load は デフォルト値 < 設定ファイル < 環境変数 の順に重ねた設定を返す。getenv には通常 os.Getenv を渡す。
+// Load はデフォルト値・設定ファイル・環境変数の順に重ねた設定を返す。getenv には通常 os.Getenv を渡す。
 func Load(getenv func(string) string) (Config, error) {
 	path, err := FilePath(getenv)
 	if err != nil {

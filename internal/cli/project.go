@@ -31,11 +31,10 @@ JSON output: {id, name, displayName, publicVisible, isMember, plan, created, upd
 			if len(args) == 1 {
 				name = args[0]
 			} else {
-				p, err := app.Project()
-				if err != nil {
+				var err error
+				if name, err = app.Project(); err != nil {
 					return err
 				}
-				name = p
 			}
 			client, err := app.Client()
 			if err != nil {

@@ -19,17 +19,16 @@ const (
 	JSON Format = "json"
 )
 
-// Formats は指定可能な出力形式の一覧である。
-var Formats = []Format{Text, JSON}
+var formats = []Format{Text, JSON}
 
 // ParseFormat は文字列を Format に変換する。
 func ParseFormat(s string) (Format, error) {
-	for _, f := range Formats {
+	for _, f := range formats {
 		if Format(s) == f {
 			return f, nil
 		}
 	}
-	return "", fmt.Errorf("unknown output format %q (available: %v)", s, Formats)
+	return "", fmt.Errorf("unknown output format %q (available: %v)", s, formats)
 }
 
 // Printer は Format に応じて値を出力する。

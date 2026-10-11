@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -47,13 +48,12 @@ JSON output: {title, lines: [{text, created, updated, ...}], links, descriptions
 				return err
 			}
 			return app.Printer().Print(page, func(w io.Writer) error {
-				width := len(fmt.Sprint(len(page.Lines)))
+				width := len(strconv.Itoa(len(page.Lines)))
 				for i, l := range page.Lines {
 					if number {
-						fmt.Fprintf(w, "%*d  %s\n", width, i+1, l.Text)
-					} else {
-						fmt.Fprintln(w, l.Text)
+						fmt.Fprintf(w, "%*d  ", width, i+1)
 					}
+					fmt.Fprintln(w, l.Text)
 				}
 				return nil
 			})
@@ -81,11 +81,7 @@ JSON output: {projectName, count, skip, limit, pages: [{title, descriptions,
   sb page list --all -o json | jq -r '.pages[].title'`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			project, err := app.Project()
-			if err != nil {
-				return err
-			}
-			client, err := app.Client()
+			project, client, err := app.projectClient()
 			if err != nil {
 				return err
 			}
@@ -143,11 +139,7 @@ JSON output: [{id, title, links, updated}]`,
   sb page titles -o json | jq -r '.[] | select(.links | index("Go")) | .title'`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			project, err := app.Project()
-			if err != nil {
-				return err
-			}
-			client, err := app.Client()
+			project, client, err := app.projectClient()
 			if err != nil {
 				return err
 			}
@@ -260,11 +252,7 @@ Output is always CSV (-o is ignored) so it can be redirected to a file.`,
 
 // fetchPage は引数のページを取得する。
 func fetchPage(cmd *cobra.Command, app *App, arg string) (*scrapbox.Page, error) {
-	ref, err := app.PageRef(arg)
-	if err != nil {
-		return nil, err
-	}
-	client, err := app.Client()
+	ref, client, err := app.pageClient(arg)
 	if err != nil {
 		return nil, err
 	}
@@ -277,11 +265,7 @@ type rawFetcher func(s *scrapbox.PagesService, ctx context.Context, project, tit
 // printRaw はページ内のファイルを取得し、出力形式に関わらずそのまま出力する。
 // コードや CSV はリダイレクトしてファイルに保存する用途を想定するため、JSON には包まない。
 func printRaw(cmd *cobra.Command, app *App, arg, filename string, fetch rawFetcher) error {
-	ref, err := app.PageRef(arg)
-	if err != nil {
-		return err
-	}
-	client, err := app.Client()
+	ref, client, err := app.pageClient(arg)
 	if err != nil {
 		return err
 	}

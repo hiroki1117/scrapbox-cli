@@ -23,7 +23,7 @@ func TestHelpQuality(t *testing.T) {
 				t.Errorf("%s: Short is empty", path)
 			}
 			// 参照系・検索系の末端コマンドには、出力形式の説明と使用例を必須とする。
-			if !sub.HasSubCommands() && (sub.GroupID == groupRead || sub.GroupID == groupSearch || isUnder(sub, groupRead, groupSearch)) {
+			if !sub.HasSubCommands() && (inGroup(sub, groupRead, groupSearch)) {
 				if !strings.Contains(strings.ToLower(sub.Long), "output") {
 					t.Errorf("%s: Long must describe the output", path)
 				}
@@ -37,9 +37,9 @@ func TestHelpQuality(t *testing.T) {
 	walk(root)
 }
 
-// isUnder はコマンドの祖先がいずれかのグループに属しているかを返す。
-func isUnder(c *cobra.Command, groupIDs ...string) bool {
-	for p := c.Parent(); p != nil; p = p.Parent() {
+// inGroup はコマンド自身または祖先がいずれかのグループに属しているかを返す。
+func inGroup(c *cobra.Command, groupIDs ...string) bool {
+	for p := c; p != nil; p = p.Parent() {
 		if slices.Contains(groupIDs, p.GroupID) {
 			return true
 		}

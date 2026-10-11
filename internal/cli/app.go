@@ -30,7 +30,7 @@ type BuildInfo struct {
 }
 
 // App はコマンド間で共有する依存関係である。
-// Config / Printer / Client はルートコマンドの PersistentPreRunE で初期化される。
+// 設定と出力形式はルートコマンドの PersistentPreRunE で解決し、Printer と Client は初回利用時に生成する。
 type App struct {
 	IO        IOStreams
 	Getenv    func(string) string
@@ -43,9 +43,6 @@ type App struct {
 	printer *output.Printer
 	client  *scrapbox.Client
 }
-
-// Config は解決済みの設定を返す。
-func (a *App) Config() config.Config { return a.cfg }
 
 // Printer は出力形式に応じた Printer を返す。
 func (a *App) Printer() *output.Printer {
@@ -115,6 +112,26 @@ func (a *App) PageRef(arg string) (scrapbox.PageRef, error) {
 		return scrapbox.PageRef{}, err
 	}
 	return scrapbox.PageRef{Project: project, Title: arg}, nil
+}
+
+// projectClient は対象プロジェクトと API クライアントを返す。
+func (a *App) projectClient() (string, *scrapbox.Client, error) {
+	project, err := a.Project()
+	if err != nil {
+		return "", nil, err
+	}
+	client, err := a.Client()
+	return project, client, err
+}
+
+// pageClient はページ引数を解決し、API クライアントとともに返す。
+func (a *App) pageClient(arg string) (scrapbox.PageRef, *scrapbox.Client, error) {
+	ref, err := a.PageRef(arg)
+	if err != nil {
+		return ref, nil, err
+	}
+	client, err := a.Client()
+	return ref, client, err
 }
 
 // ErrorHint はエラーに応じて利用者向けの対処方法を返す。対処方法がなければ空文字を返す。

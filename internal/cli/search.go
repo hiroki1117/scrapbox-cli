@@ -40,11 +40,7 @@ JSON output: {count, pages: [{title, lines, words, ...}], ...}`,
   sb search text golang -o json | jq -r '.pages[].title'`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			project, err := app.Project()
-			if err != nil {
-				return err
-			}
-			client, err := app.Client()
+			project, client, err := app.projectClient()
 			if err != nil {
 				return err
 			}
@@ -94,11 +90,7 @@ JSON output: {pages: [{title, score, exists, linked, id?, updated?, ...}]}`,
   sb search vector 設計 レビュー --limit 10 -o json`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			project, err := app.Project()
-			if err != nil {
-				return err
-			}
-			client, err := app.Client()
+			project, client, err := app.projectClient()
 			if err != nil {
 				return err
 			}
@@ -161,19 +153,11 @@ JSON output: {hops, pages: [{title, descriptions, linksLc, ...}], pagination}`,
 
 // runRelated は関連ページを取得して出力する。page related と search related で共有する。
 func runRelated(cmd *cobra.Command, app *App, arg string, hops int, opts *scrapbox.RelatedOptions) error {
-	h := scrapbox.Hops(hops)
-	if err := h.Validate(); err != nil {
-		return err
-	}
-	ref, err := app.PageRef(arg)
+	ref, client, err := app.pageClient(arg)
 	if err != nil {
 		return err
 	}
-	client, err := app.Client()
-	if err != nil {
-		return err
-	}
-	res, err := client.Pages.Related(cmd.Context(), ref.Project, ref.Title, h, opts)
+	res, err := client.Pages.Related(cmd.Context(), ref.Project, ref.Title, scrapbox.Hops(hops), opts)
 	if err != nil {
 		return err
 	}

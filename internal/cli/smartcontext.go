@@ -28,19 +28,11 @@ JSON output: {project, title, hops, text}`,
   sb context "Smart Context" --hops 2 > context.txt`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			h := scrapbox.Hops(hops)
-			if err := h.Validate(); err != nil {
-				return err
-			}
-			ref, err := app.PageRef(args[0])
+			ref, client, err := app.pageClient(args[0])
 			if err != nil {
 				return err
 			}
-			client, err := app.Client()
-			if err != nil {
-				return err
-			}
-			text, err := client.SmartContext.Export(cmd.Context(), ref.Project, ref.Title, h)
+			text, err := client.SmartContext.Export(cmd.Context(), ref.Project, ref.Title, scrapbox.Hops(hops))
 			if err != nil {
 				return err
 			}

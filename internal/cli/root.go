@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -82,7 +82,7 @@ func (a *App) init(cmd *cobra.Command, gf globalFlags) error {
 	}
 	if flags.Changed("retries") {
 		if gf.retries < 0 {
-			return fmt.Errorf("--retries must not be negative")
+			return errors.New("--retries must not be negative")
 		}
 		cfg.MaxRetries = gf.retries
 	}

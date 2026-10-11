@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-// File は設定ファイル (JSON) の内容である。認証情報を含むため、パーミッション 0600 で保存する。
+// File は設定ファイル (JSON) の内容である。
 type File struct {
 	Project     string      `json:"project,omitempty"`
 	Credentials Credentials `json:"credentials,omitzero"`
@@ -67,18 +67,15 @@ func WriteFile(path string, f File) error {
 	}
 	defer os.Remove(tmp.Name())
 
-	if err := tmp.Chmod(0o600); err != nil {
-		tmp.Close()
-		return fmt.Errorf("write config file: %w", err)
+	// os.CreateTemp はファイルを 0600 で作成する。
+	_, err = tmp.Write(append(b, '\n'))
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
 	}
-	if _, err := tmp.Write(append(b, '\n')); err != nil {
-		tmp.Close()
-		return fmt.Errorf("write config file: %w", err)
+	if err == nil {
+		err = os.Rename(tmp.Name(), path)
 	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("write config file: %w", err)
-	}
-	if err := os.Rename(tmp.Name(), path); err != nil {
+	if err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 	return nil

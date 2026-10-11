@@ -11,8 +11,7 @@ import (
 	"github.com/hiroki1117/scrapbox-cli/internal/cli"
 )
 
-// リリースビルドでは -ldflags "-X main.version=..." で埋め込む。
-// go install でビルドした場合は buildInfo がモジュール情報から補完する。
+// リリースビルドで -ldflags "-X main.version=..." により埋め込む。
 var (
 	version = "dev"
 	commit  = "none"
