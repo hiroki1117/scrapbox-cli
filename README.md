@@ -236,3 +236,7 @@ git tag v0.1.0
 git push origin v0.1.0
 make snapshot   # Build the same artifacts into dist/ without publishing (requires goreleaser)
 ```
+
+## License
+
+[MIT](LICENSE)
