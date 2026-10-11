@@ -75,6 +75,7 @@ sb config unset project
 | `COSENSE_SID` | - | `connect.sid` Cookie の値 |
 | `SCRAPBOX_API_URL` | `--base-url` | API のベース URL（既定: `https://scrapbox.io/api`） |
 | `SCRAPBOX_TIMEOUT` | `--timeout` | リクエストのタイムアウト（既定: `30s`） |
+| `SCRAPBOX_MAX_RETRIES` | `--retries` | 一時的なエラー時の再試行回数（既定: `3`） |
 | `SB_CONFIG` | - | 設定ファイルのパス |
 
 `COSENSE_PROJECT_NAME` / `COSENSE_SID` / `SCRAPBOX_API_URL` は [scrapbox_mcp](https://github.com/hiroki1117/scrapbox_mcp) と共通である。
@@ -95,13 +96,17 @@ sb page list --limit 20 --sort views        # 一覧
 sb page list --all -o json                  # 全件をページングして取得
 sb page titles                              # 全タイトル (軽量)
 sb page links "Smart Context"               # ページ内のリンク
-sb page related "Smart Context" --hops 2    # 関連ページリスト (1hop / 2hop)
+sb page related "Smart Context"             # 関連ページリスト (1hop)
+sb page related "Smart Context" --hops 2    # 2hop のページ
 sb page code "Page" main.go > main.go       # コードブロック (code:main.go)
 sb page table "Page" members > members.csv  # テーブル (table:members) を CSV で
 
 # 検索
-sb search golang cli
-sb search -- golang -python                 # 除外語は -- の後に書く
+sb search text golang cli                   # 全文検索 (AND)
+sb search text --or golang rust             # OR 検索
+sb search text -- golang -python            # 除外語は -- の後に書く
+sb search vector "AIとの連携"                # ベクトル検索 (タイトルとリンクが対象)
+sb search related "Smart Context" API       # 関連ページを全文検索で絞り込む (2 hop search)
 
 # Smart Context (Export for AI)
 sb context "Smart Context" | pbcopy
@@ -118,7 +123,7 @@ sb whoami
 `-o json` を付けると API のレスポンス構造を保った JSON を出力する。`jq` との併用を想定している。
 
 ```bash
-sb search golang -o json | jq -r '.pages[].title'
+sb search text golang -o json | jq -r '.pages[].title'
 ```
 
 `page code` / `page table` は、リダイレクトでファイル保存する用途を想定し、`-o` に関わらず生テキストを出力する。
@@ -151,6 +156,17 @@ internal/
 - **設定項目を追加する**: `config.File` にフィールドを追加し、`internal/cli/configcmd.go` の `configKeys` に登録する。
 - **書き込み系**: scrapbox_mcp と同様に WebSocket (Socket.IO) で実装する想定である。`scrapbox` パッケージに追加し、`cli` に `page create` などのサブコマンドを追加する。
 
+### ヘルプ
+
+`sb --help` に使い始め方と共通ルール（引数の形式、プロジェクトの決まり方、出力先、終了コード）をまとめている。
+各コマンドの `--help` には、出力形式（text / JSON の主なキー）と使用例を記載している。環境変数は `sb help environment` で確認できる。
+AI エージェントから使う場合も、まず `sb --help` を読ませればよい。
+
+### リトライ
+
+429 / 502 / 503 / 504 とネットワークエラーは、指数バックオフ（ジッター付き）で最大 3 回再試行する。
+`Retry-After` ヘッダがあればそれに従う。回数は `--retries` または `SCRAPBOX_MAX_RETRIES` で変更でき、`0` で無効になる。
+
 ## 開発
 
 ```bash
@@ -158,3 +174,17 @@ make test
 make vet
 make build
 ```
+
+### CI
+
+GitHub Actions（`.github/workflows/ci.yml`）で push と Pull Request ごとに次を実行する。
+
+| ジョブ | 内容 |
+|---|---|
+| lint | `gofmt` の差分・`go mod tidy` の差分・`go vet`・golangci-lint |
+| test | ubuntu / macos / windows × Go 1.23（最小）・stable で `go test -race` |
+| vulncheck | govulncheck で依存モジュールと標準ライブラリの既知の脆弱性を検査 |
+
+依存モジュールと GitHub Actions の更新は Dependabot が週次で Pull Request を作る。
+
+新しいコマンドを追加するときは、`Short` に加えて `Long`（出力形式の説明を含む）と `Example` を書く。参照系・検索系のコマンドでは `help_test.go` がこれを検査する。
