@@ -43,8 +43,6 @@ export COSENSE_PROJECT_NAME=my-project # 環境変数で指定
 sb config set project my-project      # 設定ファイルにデフォルトとして保存
 ```
 
-ページ URL を引数に渡した場合は、URL のプロジェクトを使う。
-
 ### 認証 (Private Project)
 
 Public Project は認証なしで参照できる。Private Project と Smart Context には認証が必要である。
@@ -67,7 +65,7 @@ sb auth logout                         # 設定ファイルから削除
 ```
 
 - `login` は保存前に API へアクセスして認証情報を検証する。検証を省く場合は `--no-verify` を付ける。
-- Service Account はユーザーに紐づかないので、デフォルトプロジェクトへのアクセスで検証する。
+- Service Account は、デフォルトプロジェクトへのアクセスで検証する。
 - 認証情報はシェル履歴に残らないよう、コマンドライン引数では受け付けない。
 - 環境変数に認証情報が 1 つでもあれば、設定ファイルの認証情報は使わない。
 - 複数の方式が設定されている場合は PAT > Service Account > connect.sid の順に使う。
@@ -157,19 +155,12 @@ sb search text golang -o json | jq -r '.pages[].title'
 ## 設計
 
 ```
-cmd/sb/              エントリポイント (シグナル処理、終了コード、エラーヒント)
+cmd/sb/            エントリポイント (シグナル処理、終了コード、エラーヒント)
 internal/
-  cli/               cobra のコマンド定義。App が設定・Client・Printer を各コマンドへ渡す
-  config/            設定ファイル・環境変数から設定を読み込む / 設定ファイルの保存
-  output/            text / json の出力切り替え、テーブル・時刻の整形
-  scrapbox/          REST API クライアント (CLI に依存しない)
-    client.go        HTTP 処理の共通部 (リクエスト生成、エラー変換、JSON / テキストの取得)
-    auth.go          Authenticator インターフェースと各認証方式
-    errors.go        APIError と番兵エラー (ErrNotFound など、errors.Is で判定)
-    pages.go         ページ API (一覧・取得・検索・タイトル・コード・テーブル)
-    projects.go      プロジェクト API
-    users.go         ユーザー API
-    smartcontext.go  Smart Context API
+  cli/             cobra のコマンド定義。App が設定・Client・Printer を各コマンドへ渡す
+  config/          設定ファイル・環境変数の読み込みと設定ファイルの保存
+  output/          text / json の出力切り替え、テーブル・時刻の整形
+  scrapbox/        REST API クライアント (認証、リトライ、エラー変換、各 API)
 ```
 
 依存の向きは `cmd → cli → (config, output, scrapbox)` で、`scrapbox` パッケージは他のどのパッケージにも依存しない。
@@ -177,15 +168,14 @@ internal/
 ### 拡張方法
 
 - **API を追加する**: `scrapbox` の該当サービス（`PagesService` など）にメソッドを追加する。新しいリソースなら `type XxxService service` を定義し、`NewClient` で登録する。共通の HTTP 処理は `getJSON` / `getText` を使う。
-- **コマンドを追加する**: `internal/cli` に `newXxxCmd(app *App) *cobra.Command` を定義し、親コマンドの `AddCommand` に加える。出力は `app.Printer().Print(v, textFunc)` を使えば `-o json` に自動で対応する。
+- **コマンドを追加する**: `internal/cli` に `newXxxCmd(app *App) *cobra.Command` を定義し、親コマンドの `AddCommand` に加える。出力は `app.Printer().Print(v, textFunc)` を使えば `-o json` に自動で対応する。ヘルプには `Long`（出力形式の説明を含む）と `Example` を書く（参照系・検索系は `help_test.go` が検査する）。
 - **認証方式を追加する**: `scrapbox.Authenticator` を実装し、`config.AuthType` と `config.Credentials` に追加する。
 - **設定項目を追加する**: `config.File` にフィールドを追加し、`internal/cli/configcmd.go` の `configKeys` に登録する。
-- **書き込み系**: scrapbox_mcp と同様に WebSocket (Socket.IO) で実装する想定である。`scrapbox` パッケージに追加し、`cli` に `page create` などのサブコマンドを追加する。
+- **書き込み系**: scrapbox_mcp と同様に WebSocket (Socket.IO) で実装する想定である。
 
 ### ヘルプ
 
-`sb --help` に使い始め方と共通ルール（引数の形式、プロジェクトの決まり方、出力先、終了コード）をまとめている。
-各コマンドの `--help` には、出力形式（text / JSON の主なキー）と使用例を記載している。環境変数は `sb help environment` で確認できる。
+`sb --help` に使い始め方と共通ルール（引数の形式、プロジェクトの決まり方、出力先、終了コード）を、各コマンドの `--help` に出力形式と使用例をまとめている。
 AI エージェントから使う場合も、まず `sb --help` を読ませればよい。
 
 ### リトライ
@@ -214,8 +204,6 @@ GitHub Actions（`.github/workflows/ci.yml`）で push と Pull Request ごと�
 
 依存モジュールと GitHub Actions の更新は Dependabot が週次で Pull Request を作る。
 
-新しいコマンドを追加するときは、`Short` に加えて `Long`（出力形式の説明を含む）と `Example` を書く。参照系・検索系のコマンドでは `help_test.go` がこれを検査する。
-
 ### リリース
 
 `v` から始まるタグを push すると、`.github/workflows/release.yml` が GoReleaser（`.goreleaser.yaml`）で各 OS 向けのバイナリとチェックサムを作り、GitHub Releases に公開する。
@@ -225,5 +213,3 @@ git tag v0.1.0
 git push origin v0.1.0
 make snapshot   # 公開せずに同じ成果物を dist/ に生成して確認する (goreleaser が必要)
 ```
-
-バージョンはタグから決まり、`sb version` に埋め込まれる。
