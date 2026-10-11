@@ -1,16 +1,31 @@
 package scrapbox
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 // ProjectsService handles project APIs.
 type ProjectsService service
 
 // Get fetches a project.
+// The endpoint rejects Personal Access Tokens for private projects, so on 401 it looks
+// the project up in List, which accepts them.
 //
 // GET /api/projects/:project
 func (s *ProjectsService) Get(ctx context.Context, project string) (*Project, error) {
 	var out Project
-	if _, err := s.client.getJSON(ctx, "projects/"+escapeSegment(project), nil, &out); err != nil {
+	_, err := s.client.getJSON(ctx, "projects/"+escapeSegment(project), nil, &out)
+	if errors.Is(err, ErrUnauthorized) {
+		if list, lerr := s.List(ctx); lerr == nil {
+			for _, p := range list.Projects {
+				if p.Name == project {
+					return &p, nil
+				}
+			}
+		}
+	}
+	if err != nil {
 		return nil, err
 	}
 	return &out, nil

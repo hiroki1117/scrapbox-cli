@@ -339,3 +339,21 @@ func TestPagesRelated(t *testing.T) {
 		t.Errorf("2hop = %+v", two)
 	}
 }
+
+func TestProjectsGet_FallsBackToList(t *testing.T) {
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/projects" {
+			fmt.Fprint(w, `{"projects":[{"name":"other"},{"name":"private","displayName":"P"}]}`)
+			return
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, `{"name":"NotLoggedInError"}`)
+	}))
+	p, err := c.Projects.Get(context.Background(), "private")
+	if err != nil || p.DisplayName != "P" {
+		t.Errorf("project = %+v, err = %v", p, err)
+	}
+	if _, err := c.Projects.Get(context.Background(), "missing"); !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("err = %v, want the original 401", err)
+	}
+}
